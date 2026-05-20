@@ -17,6 +17,7 @@ export function renderPlayerGame(game, appState) {
   const el = document.getElementById('view-player-game');
 
   if (!game || game.status !== 'playing') {
+    el.style.background = '';
     el.innerHTML = `<div class="player-game-container">
       <p class="text-muted">Várakozás a játékra...</p>
     </div>`;
@@ -31,21 +32,27 @@ export function renderPlayerGame(game, appState) {
   const phaseInfo      = getPhaseInfo(timerStartedAt, timerElapsedMs);
   const timerHasValue  = getElapsedMs(timerStartedAt, timerElapsedMs) > 0;
 
-  const isActive   = currentTurn.activePlayerId === appState.playerId;
-  const me         = players[appState.playerId];
-  const myTeamIdx  = me?.teamIndex ?? -1;
-  const myTeam     = myTeamIdx >= 0 ? teams[myTeamIdx] : null;
-  const myColor    = myTeamIdx >= 0 ? TEAM_COLORS[myTeamIdx] : '#888';
+  const isActive      = currentTurn.activePlayerId === appState.playerId;
+  const me             = players[appState.playerId];
+  const myTeamIdx      = me?.teamIndex ?? -1;
+  const myTeam         = myTeamIdx >= 0 ? teams[myTeamIdx] : null;
+  const myColor        = myTeamIdx >= 0 ? TEAM_COLORS[myTeamIdx] : '#888';
+  const isTeamActive   = !isActive && currentTurn.teamIndex === myTeamIdx && myTeamIdx >= 0;
+  const role           = isActive ? 'active' : (isTeamActive ? 'guesser' : 'passive');
+  const roleLabel      = isActive ? '🏖 Soron vagy!' : (isTeamActive ? '🔍 Kitaláló' : '👀 Néző');
 
   const activeTeam  = teams[currentTurn.teamIndex] || {};
   const activeColor = TEAM_COLORS[currentTurn.teamIndex] || '#888';
+
+  // Háttérszín a csapat színe alapján
+  el.style.background = `linear-gradient(180deg, ${myColor}EE 0%, ${myColor}BB 18%, ${myColor}50 50%, var(--bg) 78%)`;
 
   el.innerHTML = `
     <div class="player-game-container">
 
       <!-- Szerep badge -->
-      <span class="player-role-badge ${isActive ? 'active' : 'passive'}">
-        ${isActive ? '🎭 Te vagy soron!' : '👀 Néző'}
+      <span class="player-role-badge ${role}">
+        ${roleLabel}
       </span>
 
       <!-- Aktív csapat / feladat fejléc -->
