@@ -42,10 +42,10 @@ export function renderHostGame(game, appState) {
   const phaseInfo       = getPhaseInfo(timerStartedAt, timerElapsedMs);
   const timerExpired    = phaseInfo.phase >= 4;
 
-  const scoringEnabled  = timerHasValue || timerExpired;
+  const scoringEnabled  = (!timerRunning && timerHasValue) || timerExpired;
   const startEnabled    = !timerRunning && !!currentTurn.word && phaseInfo.secondsLeft > 0;
   const canPause        = timerRunning && !timerExpired;
-  const canReset        = timerRunning || timerHasValue;
+  const canReset        = (!timerRunning && timerHasValue) || timerExpired;
 
   const activeTeam      = teams[currentTurn.teamIndex] || {};
   const activeColor     = TEAM_COLORS[currentTurn.teamIndex] || '#888';
@@ -287,9 +287,10 @@ export function renderHostGame(game, appState) {
     const btn = document.getElementById('btn-pause-timer');
     if (btn) btn.disabled = true;
     try {
+      const currentElapsedMs = getElapsedMs(timerStartedAt, timerElapsedMs);
       await updateGameData(appState.gameCode, {
         'currentTurn/timerStartedAt': null,
-        'currentTurn/timerElapsedMs': elapsedMs,
+        'currentTurn/timerElapsedMs': currentElapsedMs,
       });
     } catch (err) {
       showToast('Hiba: ' + err.message);
