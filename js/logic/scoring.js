@@ -1,8 +1,9 @@
 /**
  * logic/scoring.js – Pontozási logika
  * ════════════════════════════════════
- * awardPoints    – pontot ítél egy csapatnak, lezárja a kört
- * endTurnNoScore – lezárja a kört pont nélkül
+ * awardPoints      – pontot ítél egy csapatnak, lezárja a kört
+ * awardSharedPoints – pontot oszt szet tobb csapat kozott
+ * endTurnNoScore   – lezárja a kört pont nélkül
  */
 
 import { updateGameData } from '../firebase-config.js';
@@ -28,25 +29,42 @@ function _buildUpdatedPlayers(players, activePlayerId) {
  * @param {number} winnerTeamIndex
  */
 export async function awardPoints(gameCode, game, winnerTeamIndex) {
+  return awardSharedPoints(gameCode, game, [winnerTeamIndex]);
+}
+
+export async function awardSharedPoints(gameCode, game, winnerTeamIndexes) {
   const currentTurn = game.currentTurn;
   if (!currentTurn) return;
 
   const teams   = (game.teams || []).map(t => ({ ...t }));
   const players = game.players || {};
   const pts     = currentTurn.points || 0;
+  const normalizedWinnerIndexes = [...new Set(
+    (Array.isArray(winnerTeamIndexes) ? winnerTeamIndexes : [])
+      .filter(idx => Number.isInteger(idx) && idx >= 0 && idx < teams.length)
+  )];
 
-  const isSameTeam = winnerTeamIndex === currentTurn.teamIndex;
-  const result     = isSameTeam ? 'solved' : 'stolen';
+  if (normalizedWinnerIndexes.length === 0) return;
 
-  teams[winnerTeamIndex].score = (teams[winnerTeamIndex].score || 0) + pts;
+  const awardedPoints = Math.floor(pts / normalizedWinnerIndexes.length);
+  normalizedWinnerIndexes.forEach(teamIndex => {
+    teams[teamIndex].score = (teams[teamIndex].score || 0) + awardedPoints;
+  });
+
+  let result = 'shared';
+  if (normalizedWinnerIndexes.length === 1) {
+    result = normalizedWinnerIndexes[0] === currentTurn.teamIndex ? 'solved' : 'stolen';
+  }
 
   const historyEntry = {
     word:            currentTurn.word,
     taskType:        currentTurn.taskType,
     points:          pts,
+    awardedPoints,
     teamIndex:       currentTurn.teamIndex,
     activePlayerId:  currentTurn.activePlayerId || null,
-    winnerTeamIndex,
+    winnerTeamIndex: normalizedWinnerIndexes.length === 1 ? normalizedWinnerIndexes[0] : null,
+    winnerTeamIndexes: normalizedWinnerIndexes,
     result,
     timestamp:       Date.now(),
   };

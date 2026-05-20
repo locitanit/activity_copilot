@@ -5,7 +5,7 @@
  * Passzív játékos: NEM látja a szót, csak feladattípust, timert, táblaállást
  */
 
-import { getPhaseInfo, formatTime } from '../logic/timer.js';
+import { getElapsedMs, getPhaseInfo, formatTime } from '../logic/timer.js';
 
 const TEAM_COLORS = ['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899'];
 
@@ -27,7 +27,9 @@ export function renderPlayerGame(game, appState) {
   const teams          = game.teams       || [];
   const players        = game.players     || {};
   const timerStartedAt = currentTurn.timerStartedAt || null;
-  const phaseInfo      = getPhaseInfo(timerStartedAt);
+  const timerElapsedMs = currentTurn.timerElapsedMs || 0;
+  const phaseInfo      = getPhaseInfo(timerStartedAt, timerElapsedMs);
+  const timerHasValue  = getElapsedMs(timerStartedAt, timerElapsedMs) > 0;
 
   const isActive   = currentTurn.activePlayerId === appState.playerId;
   const me         = players[appState.playerId];
@@ -83,7 +85,7 @@ export function renderPlayerGame(game, appState) {
           ${formatTime(phaseInfo.secondsLeft)}
         </div>
         <div id="pg-label" class="phase-label ${phaseInfo.colorClass}" style="margin-top:0.5rem">
-          ${timerStartedAt ? phaseInfo.label : 'Timer még nem indult el'}
+          ${timerStartedAt ? phaseInfo.label : (timerHasValue ? 'Timer szüneteltetve' : 'Timer még nem indult el')}
         </div>
       </div>
 
@@ -119,7 +121,7 @@ export function renderPlayerGame(game, appState) {
       const labelEl = document.getElementById('pg-label');
       if (!timerEl) { clearInterval(_timerInterval); _timerInterval = null; return; }
 
-      const info = getPhaseInfo(timerStartedAt);
+      const info = getPhaseInfo(timerStartedAt, timerElapsedMs);
       timerEl.className = `host-timer-display ${info.colorClass}`;
       timerEl.textContent = formatTime(info.secondsLeft);
 

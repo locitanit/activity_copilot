@@ -8,11 +8,11 @@
  * - Következő feladványok + Előzmények
  */
 
-import { showToast }                    from '../app.js';
-import { updateGameData }               from '../firebase-config.js';
-import { rerollCurrentWord }            from '../logic/turn-manager.js';
-import { awardPoints, endTurnNoScore }  from '../logic/scoring.js';
-import { getPhaseInfo, formatTime }     from '../logic/timer.js';
+import { showToast }                                     from '../app.js';
+import { updateGameData }                                from '../firebase-config.js';
+import { rerollCurrentWord }                             from '../logic/turn-manager.js';
+import { awardPoints, awardSharedPoints, endTurnNoScore } from '../logic/scoring.js';
+import { getElapsedMs, getPhaseInfo, formatTime }        from '../logic/timer.js';
 
 const TEAM_COLORS = ['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899'];
 
@@ -35,12 +35,17 @@ export function renderHostGame(game, appState) {
   const currentTurn     = game.currentTurn || {};
   const teams           = game.teams       || [];
   const timerStartedAt  = currentTurn.timerStartedAt || null;
+  const timerElapsedMs  = currentTurn.timerElapsedMs || 0;
   const timerRunning    = !!timerStartedAt;
-  const phaseInfo       = getPhaseInfo(timerStartedAt);
+  const elapsedMs       = getElapsedMs(timerStartedAt, timerElapsedMs);
+  const timerHasValue   = elapsedMs > 0;
+  const phaseInfo       = getPhaseInfo(timerStartedAt, timerElapsedMs);
   const timerExpired    = phaseInfo.phase >= 4;
 
-  const scoringEnabled  = timerRunning;
-  const startEnabled    = !timerRunning && !!currentTurn.word;
+  const scoringEnabled  = timerHasValue || timerExpired;
+  const startEnabled    = !timerRunning && !!currentTurn.word && phaseInfo.secondsLeft > 0;
+  const canPause        = timerRunning && !timerExpired;
+  const canReset        = timerRunning || timerHasValue;
 
   const activeTeam      = teams[currentTurn.teamIndex] || {};
   const activeColor     = TEAM_COLORS[currentTurn.teamIndex] || '#888';
@@ -88,7 +93,7 @@ export function renderHostGame(game, appState) {
           </div>
 
           <!-- Újrasorsolás (csak timer előtt) -->
-          ${!timerRunning && currentTurn.word ? `
+          ${!timerHasValue && currentTurn.word ? `
             <div style="text-align:center">
               <button class="btn btn-secondary" id="btn-reroll">
                 🔀 Feladvány újrasorsolása
@@ -102,18 +107,23 @@ export function renderHostGame(game, appState) {
             </div>
             <div id="hg-label" class="phase-label ${phaseInfo.colorClass}"
                  style="margin-top:0.6rem">
-              ${timerRunning ? phaseInfo.label : 'Nyomd meg az ▶ gombot a kör indításához'}
+              ${timerRunning
+                ? phaseInfo.label
+                : (timerHasValue ? 'Timer szüneteltetve' : 'Nyomd meg az ▶ gombot a kör indításához')}
             </div>
             <div class="host-controls" style="margin-top:1rem">
-              ${!timerRunning
-                ? `<button class="btn btn-success btn-lg" id="btn-start-timer"
-                     ${startEnabled ? '' : 'disabled'}>
-                     ▶ Idő indítása
-                   </button>`
-                : `<button class="btn btn-danger" id="btn-no-score">
-                     ❌ Senki sem találta ki
-                   </button>`
-              }
+              <button class="btn btn-success btn-lg" id="btn-start-timer"
+                   ${startEnabled ? '' : 'disabled'}>
+                ${timerHasValue ? '▶ Folytatás' : '▶ Idő indítása'}
+              </button>
+              <button class="btn btn-warning" id="btn-pause-timer"
+                   ${canPause ? '' : 'disabled'}>
+                ⏸ Szünet
+              </button>
+              <button class="btn btn-danger" id="btn-reset-timer"
+                   ${canReset ? '' : 'disabled'}>
+                ↺ Reset
+              </button>
             </div>
           </div>
 
@@ -138,6 +148,32 @@ export function renderHostGame(game, appState) {
                     ${i === currentTurn.teamIndex ? '⭐' : '⚡ rabolt'}
                   </span>
                 </button>`).join('')}
+              <button class="btn btn-danger score-btn-noscore"
+                      id="btn-no-score" ${scoringEnabled ? '' : 'disabled'}>
+                ❌ Senki sem találta ki
+              </button>
+            </div>
+
+            <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+              <div style="display:flex;align-items:baseline;gap:0.6rem;margin-bottom:0.7rem">
+                <h4 style="font-size:0.92rem;margin:0">Osztozott pontozás</h4>
+                <span style="font-size:0.78rem;color:var(--text-muted)">
+                  A pontok a kijelölt csapatok között egyenlően oszlanak, lefelé kerekítve.
+                </span>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem">
+                ${teams.map((t, i) => `
+                  <label style="display:flex;align-items:center;gap:0.45rem;padding:0.45rem 0.8rem;
+                                 background:var(--surface-2);border:1px solid var(--border);
+                                 border-radius:999px;cursor:pointer">
+                    <input type="checkbox" class="shared-score-check" value="${i}" ${scoringEnabled ? '' : 'disabled'}>
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${TEAM_COLORS[i]}"></span>
+                    ${_esc(t.name)}
+                  </label>`).join('')}
+              </div>
+              <button class="btn btn-primary" id="btn-award-shared" ${scoringEnabled ? '' : 'disabled'}>
+                🤝 Osztott pontozás könyvelése
+              </button>
             </div>
           </div>
 
@@ -198,6 +234,7 @@ export function renderHostGame(game, appState) {
                       <span class="history-result ${h.result || 'unsolved'}">
                         ${h.result === 'solved'   ? '✓ kitalálva'
                         : h.result === 'stolen'   ? '⚡ rabolt'
+                        : h.result === 'shared'   ? '🤝 megosztva'
                         :                           '✗ nem találta'}
                       </span>
                     </div>`).join('')
@@ -237,10 +274,41 @@ export function renderHostGame(game, appState) {
     try {
       await updateGameData(appState.gameCode, {
         'currentTurn/timerStartedAt': Date.now(),
+        'currentTurn/timerElapsedMs': timerElapsedMs,
       });
     } catch (err) {
       showToast('Hiba: ' + err.message);
       const b = document.getElementById('btn-start-timer');
+      if (b) b.disabled = false;
+    }
+  });
+
+  document.getElementById('btn-pause-timer')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-pause-timer');
+    if (btn) btn.disabled = true;
+    try {
+      await updateGameData(appState.gameCode, {
+        'currentTurn/timerStartedAt': null,
+        'currentTurn/timerElapsedMs': elapsedMs,
+      });
+    } catch (err) {
+      showToast('Hiba: ' + err.message);
+      const b = document.getElementById('btn-pause-timer');
+      if (b) b.disabled = false;
+    }
+  });
+
+  document.getElementById('btn-reset-timer')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-reset-timer');
+    if (btn) btn.disabled = true;
+    try {
+      await updateGameData(appState.gameCode, {
+        'currentTurn/timerStartedAt': null,
+        'currentTurn/timerElapsedMs': 0,
+      });
+    } catch (err) {
+      showToast('Hiba: ' + err.message);
+      const b = document.getElementById('btn-reset-timer');
       if (b) b.disabled = false;
     }
   });
@@ -260,14 +328,40 @@ export function renderHostGame(game, appState) {
   document.querySelectorAll('.score-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const teamIdx = parseInt(btn.dataset.team, 10);
-      document.querySelectorAll('.score-btn').forEach(b => b.disabled = true);
+      document.querySelectorAll('.score-btn, .shared-score-check').forEach(b => b.disabled = true);
+      const sharedBtn = document.getElementById('btn-award-shared');
+      if (sharedBtn) sharedBtn.disabled = true;
       try {
         await awardPoints(appState.gameCode, game, teamIdx);
       } catch (err) {
         showToast('Hiba: ' + err.message);
-        document.querySelectorAll('.score-btn').forEach(b => b.disabled = false);
+        document.querySelectorAll('.score-btn, .shared-score-check').forEach(b => b.disabled = false);
+        if (sharedBtn) sharedBtn.disabled = false;
       }
     });
+  });
+
+  document.getElementById('btn-award-shared')?.addEventListener('click', async () => {
+    const selectedTeams = Array.from(document.querySelectorAll('.shared-score-check:checked'))
+      .map(cb => parseInt(cb.value, 10))
+      .filter(Number.isInteger);
+
+    if (selectedTeams.length < 2) {
+      showToast('Jelölj ki legalább két csapatot az osztott ponthoz!');
+      return;
+    }
+
+    const btn = document.getElementById('btn-award-shared');
+    if (btn) btn.disabled = true;
+    document.querySelectorAll('.score-btn, .shared-score-check').forEach(b => b.disabled = true);
+
+    try {
+      await awardSharedPoints(appState.gameCode, game, selectedTeams);
+    } catch (err) {
+      showToast('Hiba: ' + err.message);
+      if (btn) btn.disabled = false;
+      document.querySelectorAll('.score-btn, .shared-score-check').forEach(b => b.disabled = false);
+    }
   });
 
   // ── Helyi timer interval (csak UI frissítés, nem Firebase) ───
@@ -277,7 +371,7 @@ export function renderHostGame(game, appState) {
       const labelEl = document.getElementById('hg-label');
       if (!timerEl) { clearInterval(_timerInterval); _timerInterval = null; return; }
 
-      const info = getPhaseInfo(timerStartedAt);
+      const info = getPhaseInfo(timerStartedAt, timerElapsedMs);
       timerEl.className = `host-timer-display ${info.colorClass}`;
       timerEl.textContent = formatTime(info.secondsLeft);
 

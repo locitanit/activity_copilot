@@ -19,7 +19,7 @@
  */
 
 import { state }                    from '../app.js';
-import { getPhaseInfo, formatTime } from '../logic/timer.js';
+import { getElapsedMs, getPhaseInfo, formatTime } from '../logic/timer.js';
 
 const TEAM_COLORS = ['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899'];
 
@@ -112,7 +112,9 @@ function _renderPlaying(el, game) {
   const teams          = game.teams       || [];
   const players        = game.players     || {};
   const timerStartedAt = currentTurn.timerStartedAt || null;
-  const phaseInfo      = getPhaseInfo(timerStartedAt);
+  const timerElapsedMs = currentTurn.timerElapsedMs || 0;
+  const phaseInfo      = getPhaseInfo(timerStartedAt, timerElapsedMs);
+  const timerHasValue  = getElapsedMs(timerStartedAt, timerElapsedMs) > 0;
   const boardLength    = game.settings?.boardLength || 30;
   const gameCode       = state.gameCode || '';
 
@@ -152,7 +154,7 @@ function _renderPlaying(el, game) {
         </div>
         <div id="proj-label" class="phase-label ${phaseInfo.colorClass}"
              style="margin-top:0.75rem;font-size:1.2rem">
-          ${timerStartedAt ? phaseInfo.label : 'Várakozás az időre...'}
+          ${timerStartedAt ? phaseInfo.label : (timerHasValue ? 'Timer szünetel' : 'Várakozás...')}
         </div>
       </div>
 
@@ -201,7 +203,7 @@ function _renderPlaying(el, game) {
       const labelEl = document.getElementById('proj-label');
       if (!timerEl) { clearInterval(_timerInterval); _timerInterval = null; return; }
 
-      const info = getPhaseInfo(timerStartedAt);
+      const info = getPhaseInfo(timerStartedAt, timerElapsedMs);
       timerEl.className = `timer-display ${info.colorClass}`;
       timerEl.textContent = formatTime(info.secondsLeft);
 
