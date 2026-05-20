@@ -39,7 +39,9 @@ export function generateTurnData(settings, excludeWords = []) {
 
   const word     = pool[Math.floor(Math.random() * pool.length)];
   const taskType = allowedTaskTypes[Math.floor(Math.random() * allowedTaskTypes.length)];
-  const points   = Math.floor(Math.random() * 4) + 3; // 3–6
+  const POINTS_BY_TYPE = { 'körülírás': [2, 3], 'mutogatás': [4, 5, 6], 'rajzolás': [4, 5, 6] };
+  const pointPool = POINTS_BY_TYPE[taskType] ?? [3, 4, 5];
+  const points    = pointPool[Math.floor(Math.random() * pointPool.length)];
 
   return { word, taskType, points };
 }
