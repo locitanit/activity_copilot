@@ -16,22 +16,31 @@ Csapatban kell szavakat/fogalmakat kitaláltatni a többiekkel. Az a csapat nyer
 | Szerep | Leírás |
 |--------|--------|
 | **Játékmester (Host)** | Ő indítja el a játékot, látja a titkos szót, méri az időt és ítéli meg a pontokat. |
-| **Játékos (Player)** | Mobiltelefonon csatlakozik a szoba kódjával. Az éppen aktív játékos látja a titkos szót. |
+| **Játékos (Player)** | Mobiltelefonon csatlakozik a szoba kódjával. Az éppen aktív játékos látja a titkos szót. A telefon háttérszíne a saját csapat színét mutatja. |
 | **Kivetítő (Projector)** | Külön böngészőablak/tab, amit a projektoron mutat a tanár. **Soha nem mutatja a titkos szót.** |
+
+### Játékos státuszok
+| Státusz | Leírás |
+|---------|--------|
+| 🎭 **Soron vagy!** | Te magyarázol/rajzolsz/mutogatsz ebben a körben. |
+| 🔍 **Kitaláló** | A csapattársad van soron – neked kell kitalálni. |
+| 👀 **Néző** | Más csapat köre – figyelsz. |
 
 ### Egy kör folyamata
 1. A Játékmester látja a titkos szót és a feladattípust (magyarázás / rajzolás / mutogatás).
 2. A **▶ Idő indítása** gombra kattintva indul a 90 másodperces visszaszámláló.
 3. A visszaszámláló 3 fázisra osztja az időt: 🟢 0–30s · 🟡 30–60s · 🔴 60–90s
-4. A szót kitaláló csapatra kattint a Játékmester a pontozó gombokkal.
-5. Ha senki sem találja ki: **❌ Senki sem találta ki** gomb.
-6. A következő csapat következő játékosa kap szót, a kör megismétlődik.
-7. Az a csapat nyer, amelyik eléri a beállított haladási tábla végét.
+4. Az idő bármikor **⏸ szüneteltethető** és folytatható – pontozás és reset csak szünet alatt érhető el.
+5. A szót kitaláló csapatra kattint a Játékmester a pontozó gombokkal.
+6. Ha több csapat is kitalálta: **🤝 Osztott pontozás** – a pont egyenlően (lefelé kerekítve) osztódik el.
+7. Ha senki sem találja ki: **❌ Senki sem találta ki** gomb.
+8. A következő csapat következő játékosa kap szót, a kör megismétlődik.
+9. Az a csapat nyer, amelyik eléri a beállított haladási tábla végét.
 
 ### Különleges szabályok
 - **Lopott pont**: Más csapat is szerezhet pontot, ha a saját csapat helyett ők találják ki.
-- **Újra húzás**: A Játékmester az idő elindítása előtt újrahúzhatja a szót (`🔄 Másik szó`).
-- **Csapatbeosztás**: Lehet véletlenszerű vagy kézi.
+- **Osztott pont**: Egyszerre több csapatnak is adható pont – `🤝 Osztott pontozás könyvelése`.
+- **Újra húzás**: A Játékmester az idő elindítása előtt újrahúzhatja a szót (`🔀 Feladvány újrasorsolása`).
 
 ---
 
@@ -103,8 +112,8 @@ activity/
     │   └── topics.js           # Szótár – témakörök és szavak (feltöltendő!)
     ├── logic/
     │   ├── turn-manager.js     # Kör generálás, szóhúzás, következő játékos kiválasztás
-    │   ├── timer.js            # Fázisszámítás, időformázás
-    │   └── scoring.js          # Pontozás, lopott pont, következő kör indítása
+    │   ├── timer.js            # Fázisszámítás, szünet-támogatás (timerElapsedMs), időformázás
+    │   └── scoring.js          # Pontozás, lopott pont, osztott pont, következő kör indítása
     └── views/
         ├── landing.js          # 1. nézet – Főmenü
         ├── host-setup.js       # 2. nézet – Játékbeállítások (csapatok, témák, tábla)
