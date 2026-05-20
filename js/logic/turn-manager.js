@@ -109,6 +109,7 @@ export async function startNextTurn(gameCode, game) {
     teamIndex:     nextTeamIndex,
     activePlayerId: activePlayerId || null,
     timerStartedAt: null,
+    wordRevealed:   false,
   };
 
   // upcomingTurns feltöltése max 3-ra

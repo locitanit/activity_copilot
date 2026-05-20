@@ -41,9 +41,10 @@ export function renderHostGame(game, appState) {
   const timerHasValue   = elapsedMs > 0;
   const phaseInfo       = getPhaseInfo(timerStartedAt, timerElapsedMs);
   const timerExpired    = phaseInfo.phase >= 4;
+  const wordRevealed    = !!currentTurn.wordRevealed;
 
   const scoringEnabled  = (!timerRunning && timerHasValue) || timerExpired;
-  const startEnabled    = !timerRunning && !!currentTurn.word && phaseInfo.secondsLeft > 0;
+  const startEnabled    = !timerRunning && !!currentTurn.word && phaseInfo.secondsLeft > 0 && wordRevealed;
   const canPause        = timerRunning && !timerExpired;
   const canReset        = (!timerRunning && timerHasValue) || timerExpired;
 
@@ -92,9 +93,16 @@ export function renderHostGame(game, appState) {
             }
           </div>
 
-          <!-- Újrasorsolás (csak timer előtt) -->
+          <!-- Feladvány felfedése + Újrasorsolás (csak timer előtt) -->
           ${!timerHasValue && currentTurn.word ? `
-            <div style="text-align:center">
+            <div style="text-align:center;display:flex;flex-direction:column;gap:0.6rem;align-items:center">
+              ${!wordRevealed ? `
+                <button class="btn-reveal" id="btn-reveal-word">
+                  👁 Feladvány felfedése a játékosnak
+                </button>
+                <span style="font-size:0.78rem;color:var(--text-muted)">
+                  A játékos még nem látja a feladványt
+                </span>` : ''}
               <button class="btn btn-secondary" id="btn-reroll">
                 🔀 Feladvány újrasorsolása
               </button>
@@ -254,6 +262,20 @@ export function renderHostGame(game, appState) {
     const url = `index.html?role=projector&room=${encodeURIComponent(appState.gameCode)}`;
     const win = window.open(url, `projector_${appState.gameCode}`, 'width=1280,height=720');
     if (!win) showToast('⚠️ Engedélyezd a felugró ablakokat a böngészőben!');
+  });
+
+  document.getElementById('btn-reveal-word')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-reveal-word');
+    if (btn) btn.disabled = true;
+    try {
+      await updateGameData(appState.gameCode, {
+        'currentTurn/wordRevealed': true,
+      });
+    } catch (err) {
+      showToast('Hiba: ' + err.message);
+      const b = document.getElementById('btn-reveal-word');
+      if (b) b.disabled = false;
+    }
   });
 
   document.getElementById('btn-reroll')?.addEventListener('click', async () => {

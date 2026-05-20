@@ -166,13 +166,15 @@ function _renderPlaying(el, game) {
         ${activePlayer
           ? `<div class="turn-player">${_esc(activePlayer)} teljesít</div>`
           : ''}
-        ${currentTurn.taskType
+        ${currentTurn.taskType && currentTurn.wordRevealed
           ? `<div class="task-type-badge"
                   style="color:${activeColor};border:2px solid ${activeColor}40">
                ${_esc(currentTurn.taskType)}
              </div>
              <div class="task-points">⭐ ${currentTurn.points ?? '–'} pont</div>`
-          : '<div class="task-points" style="color:#444">Kör hamarosan indul...</div>'
+          : currentTurn.word && !currentTurn.wordRevealed
+            ? '<div class="projector-prepare-badge">⏳ Felkészülés...</div>'
+            : '<div class="task-points" style="color:#444">Kör hamarosan indul...</div>'
         }
       </div>
     </div>

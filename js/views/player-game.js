@@ -58,16 +58,15 @@ export function renderPlayerGame(game, appState) {
       <!-- Aktív csapat / feladat fejléc -->
       <div class="card text-center" style="width:100%;border-color:${isActive ? myColor : activeColor}">
         ${isActive
-          ? `<p class="text-muted" style="font-size:0.82rem;margin-bottom:0.25rem">A te feladatod</p>
-             <p style="font-size:1.1rem;font-weight:700;color:${myColor}">${_esc(myTeam?.name ?? '')}</p>`
-          : `<p class="text-muted" style="font-size:0.82rem;margin-bottom:0.25rem">Soron lévő csapat</p>
-             <p style="font-size:1.1rem;font-weight:700;color:${activeColor}">${_esc(activeTeam.name ?? '?')}</p>
-             ${currentTurn.activePlayerId && players[currentTurn.activePlayerId]
-               ? `<p class="text-muted" style="font-size:0.85rem;margin-top:0.2rem">
-                    ${_esc(players[currentTurn.activePlayerId].name)} teljesít
-                  </p>`
-               : ''}
-          `
+        ? `<p class="text-muted" style="font-size:0.82rem;margin-bottom:0.25rem">A te feladatod</p>
+           <p style="font-size:1.1rem;font-weight:700;color:${myColor}">${_esc(myTeam?.name ?? '')}</p>`
+        : `<p class="text-muted" style="font-size:0.82rem;margin-bottom:0.25rem">Soron lévő csapat</p>
+           <p style="font-size:1.1rem;font-weight:700;color:${activeColor}">${_esc(activeTeam.name ?? '?')}</p>
+           ${currentTurn.activePlayerId && players[currentTurn.activePlayerId]
+             ? `<p class="text-muted" style="font-size:0.85rem;margin-top:0.2rem">
+                  ${_esc(players[currentTurn.activePlayerId].name)} teljesít
+                </p>`
+             : ''}`
         }
         <div class="task-meta" style="justify-content:center;margin-top:0.6rem">
           <span>🎯 ${_esc(currentTurn.taskType ?? '–')}</span>
@@ -75,15 +74,21 @@ export function renderPlayerGame(game, appState) {
         </div>
       </div>
 
-      <!-- Titkos szó (csak aktív játékosnak) -->
-      ${isActive && currentTurn.word
+      <!-- Titkos szó / Felkészülés / Rejtve -->
+      ${isActive && currentTurn.word && currentTurn.wordRevealed
         ? `<div class="card" style="width:100%;text-align:center;border-color:#fbbf24">
              <p class="secret-word-label">🤫 Titkos szó – csak te látod!</p>
              <p class="player-word-reveal">${_esc(currentTurn.word)}</p>
            </div>`
-        : `<div class="card text-center" style="width:100%">
-             <p class="player-word-hidden">🙈 A titkos szó rejtve van</p>
-           </div>`
+        : isActive && !currentTurn.wordRevealed
+          ? `<div class="card player-prepare-card" style="width:100%;text-align:center">
+               <p class="player-prepare-msg">⏳ Készülj fel!</p>
+               <p class="player-prepare-sub">A játékmester hamarosan felfedi a feladványodat.</p>
+               <p class="player-prepare-sub">Addig menj ki a teremből, ha szükséges!</p>
+             </div>`
+          : `<div class="card text-center" style="width:100%">
+               <p class="player-word-hidden">🙈 A titkos szó rejtve van</p>
+             </div>`
       }
 
       <!-- Timer -->

@@ -717,6 +717,61 @@ input:focus, select:focus {
 .gap-md       { gap: 1rem; }
 
 /* ============================================================
+   PREPARATION PHASE (wordRevealed)
+   ============================================================ */
+.btn-reveal {
+  background: #f59e0b;
+  color: #fff;
+  font-size: 1.15rem;
+  padding: 0.85rem 1.8rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 700;
+  animation: pulse-reveal 1.8s ease-in-out infinite;
+  transition: opacity 0.15s;
+}
+.btn-reveal:hover { opacity: 0.9; }
+
+@keyframes pulse-reveal {
+  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.45); }
+  50%      { transform: scale(1.04); box-shadow: 0 0 24px 6px rgba(245, 158, 11, 0.25); }
+}
+
+.player-prepare-card {
+  border-color: #fbbf24 !important;
+}
+.player-prepare-msg {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #fbbf24;
+  text-align: center;
+  padding: 0.75rem 1rem;
+  animation: fade-pulse 2.2s ease-in-out infinite;
+}
+.player-prepare-sub {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin-top: 0.4rem;
+}
+@keyframes fade-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+.projector-prepare-badge {
+  display: inline-block;
+  font-size: 1.6rem;
+  font-weight: 700;
+  padding: 0.6rem 1.4rem;
+  border-radius: 10px;
+  background: var(--surface);
+  color: #f59e0b;
+  border: 2px solid rgba(245,158,11,0.3);
+  animation: fade-pulse 2.2s ease-in-out infinite;
+}
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width: 900px) {

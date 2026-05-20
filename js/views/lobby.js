@@ -181,6 +181,7 @@ async function _handleStartGame(game, playerEntries, appState) {
     teamIndex:      0,
     activePlayerId: firstActivePlayerId || null,
     timerStartedAt: null,
+    wordRevealed:   false,
   };
 
   // Atomikus Firebase írás: csapat-kiosztás + játékstátusz + első kör

@@ -33,8 +33,8 @@ export function renderLanding() {
           <input
             id="join-code"
             type="text"
-            placeholder="pl. A1B2C3"
-            maxlength="6"
+            placeholder="A1B2"
+            maxlength="4"
             autocomplete="off"
             spellcheck="false"
             style="text-transform:uppercase;letter-spacing:0.25em;font-size:1.4rem;text-align:center"
@@ -43,7 +43,7 @@ export function renderLanding() {
 
         <div class="form-group">
           <label for="join-name">A neved</label>
-          <input id="join-name" type="text" placeholder="pl. Béla" maxlength="30" autocomplete="off" />
+          <input id="join-name" type="text" placeholder="Béla" maxlength="30" autocomplete="off" />
         </div>
 
         <div class="modal-actions">
