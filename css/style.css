@@ -188,13 +188,174 @@ input:focus, select:focus {
    ============================================================ */
 #view-host-setup { padding-top: 2.5rem; padding-bottom: 3rem; }
 .setup-container  { width: 100%; max-width: 660px; }
-.setup-container h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 1.75rem; }
 
-.team-names-container { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.4rem; }
+.setup-header { text-align: center; margin-bottom: 1.75rem; }
+.setup-header h1 { font-size: 1.9rem; font-weight: 700; margin-bottom: 0.3rem; }
+.setup-subtitle  { color: var(--text-muted); font-size: 0.95rem; }
+
+/* Section cards */
+.setup-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.4rem 1.5rem;
+  margin-bottom: 1rem;
+}
+.setup-card .form-group:last-child { margin-bottom: 0; }
+
+.setup-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 1.2rem;
+}
+
+.setup-field-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+/* Radio pill toggle buttons */
+.radio-pill-group { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+.radio-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 1.1rem;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  user-select: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.radio-pill input[type="radio"] { display: none; }
+
+.radio-pill-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid var(--surface-3);
+  flex-shrink: 0;
+  position: relative;
+  transition: border-color 0.15s;
+}
+.radio-pill-dot::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: transparent;
+  transition: background 0.15s;
+}
+.radio-pill:has(input:checked) {
+  border-color: var(--primary);
+  background: rgba(37, 99, 235, 0.15);
+}
+.radio-pill:has(input:checked) .radio-pill-dot {
+  border-color: var(--primary);
+}
+.radio-pill:has(input:checked) .radio-pill-dot::after {
+  background: var(--primary);
+}
+
+/* Range slider */
+.range-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.range-row input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  outline: none;
+  border: none;
+  padding: 0;
+  width: auto;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.range-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--primary);
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px var(--primary);
+}
+.range-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--primary);
+  min-width: 2.2rem;
+  text-align: right;
+}
+
+/* Pill checkboxes (topics + task types) */
+.pill-checkbox-group { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+.pill-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 1rem;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 500;
+  user-select: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.pill-check input[type="checkbox"] { display: none; }
+
+.pill-check-mark {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 1.5px solid var(--surface-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  color: transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.pill-check:has(input:checked) {
+  border-color: var(--primary);
+  background: rgba(37, 99, 235, 0.18);
+}
+.pill-check:has(input:checked) .pill-check-mark {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.pill-count { color: var(--text-muted); font-size: 0.78rem; }
+
+/* Team name inputs */
+.team-names-container { display: flex; flex-direction: column; gap: 0.45rem; }
 .team-name-row  { display: flex; align-items: center; gap: 0.6rem; }
-.team-color-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.team-color-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
 
-.setup-actions { display: flex; gap: 1rem; margin-top: 2rem; }
+.setup-actions { display: flex; gap: 1rem; margin-top: 1.25rem; justify-content: space-between; align-items: center; }
 
 /* ============================================================
    VIEW 3 – LOBBY

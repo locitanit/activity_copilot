@@ -16,79 +16,98 @@ export function renderHostSetup() {
   const topicKeys = Object.keys(topics);
   const el = document.getElementById('view-host-setup');
 
+  const TASK_ICONS = { 'mutogatás': '🤸', 'rajzolás': '🎨', 'körülírás': '💬' };
+
   el.innerHTML = `
     <div class="setup-container">
-      <h1>⚙️ Játék beállítása</h1>
+      <div class="setup-header">
+        <h1>⚙️ Játék beállítások</h1>
+        <p class="setup-subtitle">Állítsd be a játékot, majd indítsd a lobbyt!</p>
+      </div>
 
-      <!-- Csapatok száma + Tábla hossza -->
-      <div class="form-row">
+      <!-- Csapatok kártya -->
+      <div class="setup-card">
+        <h2 class="setup-section-title">👥 Csapatok</h2>
+
         <div class="form-group">
-          <label for="team-count">Csapatok száma</label>
+          <div class="setup-field-label">Csapatok száma</div>
           <select id="team-count">
             ${[2,3,4,5,6].map(n => `<option value="${n}"${n === 3 ? ' selected' : ''}>${n} csapat</option>`).join('')}
           </select>
         </div>
+
         <div class="form-group">
-          <label for="board-length">Tábla hossza (mezők száma)</label>
-          <input id="board-length" type="number" min="5" max="60" value="30" />
-        </div>
-      </div>
-
-      <!-- Csapat nevek -->
-      <div class="form-group">
-        <label>Csapat nevek</label>
-        <div class="team-names-container" id="team-names-container"></div>
-      </div>
-
-      <!-- Csapatba osztás módja -->
-      <div class="form-group">
-        <label for="assignment-type">Csapatba osztás módja</label>
-        <select id="assignment-type">
-          <option value="random">Véletlenszerű (automatikus, a Lobby indításakor)</option>
-          <option value="manual">Kézi (a játékos választ csapatot a Váróteremben)</option>
-        </select>
-      </div>
-
-      <!-- Feladattípusok -->
-      <div class="form-group">
-        <label>Engedélyezett feladattípusok</label>
-        <div class="checkbox-group" id="task-types-group">
-          ${TASK_TYPES.map(t => `
-            <label class="checkbox-item">
-              <input type="checkbox" name="taskType" value="${t}" checked> ${t}
+          <div class="setup-field-label">Csapatba osztás módja</div>
+          <div class="radio-pill-group">
+            <label class="radio-pill">
+              <input type="radio" name="assignmentType" value="random" checked>
+              <span class="radio-pill-dot"></span>
+              🎲 Véletlenszerű
             </label>
-          `).join('')}
+            <label class="radio-pill">
+              <input type="radio" name="assignmentType" value="manual">
+              <span class="radio-pill-dot"></span>
+              🖐️ Manuális választás
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="setup-field-label">Csapatnevek</div>
+          <div class="team-names-container" id="team-names-container"></div>
         </div>
       </div>
 
-      <!-- Témakörök -->
-      <div class="form-group">
-        <label>Témakörök</label>
+      <!-- Pálya kártya -->
+      <div class="setup-card">
+        <h2 class="setup-section-title">🏁 Pálya</h2>
+        <div class="form-group">
+          <div class="setup-field-label">Tábla hossza (cél pontszám)</div>
+          <div class="range-row">
+            <input id="board-length" type="range" min="5" max="60" value="30">
+            <span class="range-value" id="board-length-val">30</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Témakörök kártya -->
+      <div class="setup-card">
+        <h2 class="setup-section-title">🎯 Témakörök</h2>
         ${topicKeys.length === 0
-          ? `<div class="card" style="padding:1rem;border-color:var(--warning)">
-               <p style="color:var(--warning);font-size:0.9rem">
-                 ⚠️ Nincs téma definiálva a <code>js/data/topics.js</code> fájlban.
-                 Adj hozzá szavakat, majd frissítsd az oldalt.
-               </p>
-             </div>`
-          : `<div class="checkbox-group" id="topics-group">
+          ? `<p style="color:var(--warning);font-size:0.88rem">
+               ⚠️ Nincs téma definiálva a <code>js/data/topics.js</code> fájlban.
+               Adj hozzá szavakat, majd frissítsd az oldalt.
+             </p>`
+          : `<div class="pill-checkbox-group" id="topics-group">
                ${topicKeys.map(k => `
-                 <label class="checkbox-item">
+                 <label class="pill-check">
                    <input type="checkbox" name="topic" value="${k}" checked>
-                   ${k}
-                   <span style="color:var(--text-muted);font-size:0.75rem">(${topics[k].length} szó)</span>
+                   <span class="pill-check-mark">✓</span>
+                   ${k} <span class="pill-count">(${topics[k].length})</span>
                  </label>
                `).join('')}
              </div>`
         }
       </div>
 
+      <!-- Feladattípusok kártya -->
+      <div class="setup-card">
+        <h2 class="setup-section-title">🎯 Feladattípusok</h2>
+        <div class="pill-checkbox-group" id="task-types-group">
+          ${TASK_TYPES.map(t => `
+            <label class="pill-check">
+              <input type="checkbox" name="taskType" value="${t}" checked>
+              <span class="pill-check-mark">✓</span>
+              ${TASK_ICONS[t] || ''} ${t}
+            </label>
+          `).join('')}
+        </div>
+      </div>
+
       <!-- Gombok -->
       <div class="setup-actions">
         <button class="btn btn-secondary" id="btn-setup-back">← Vissza</button>
-        <button class="btn btn-primary btn-lg" id="btn-create-lobby">
-          Lobby indítása →
-        </button>
+        <button class="btn btn-primary btn-lg" id="btn-create-lobby">🚀 Lobby indítása</button>
       </div>
     </div>
   `;
@@ -101,6 +120,10 @@ export function renderHostSetup() {
   document.getElementById('team-count').addEventListener('change', (e) => {
     _renderTeamNameInputs(parseInt(e.target.value, 10));
   });
+
+  const rangeInput = document.getElementById('board-length');
+  const rangeVal   = document.getElementById('board-length-val');
+  rangeInput.addEventListener('input', () => { rangeVal.textContent = rangeInput.value; });
 
   document.getElementById('btn-setup-back').addEventListener('click', () => {
     import('./landing.js').then(({ renderLanding }) => {
@@ -138,7 +161,7 @@ function _renderTeamNameInputs(count) {
 async function _handleCreateLobby() {
   const teamCount = parseInt(document.getElementById('team-count').value, 10);
   const boardLength = parseInt(document.getElementById('board-length').value, 10);
-  const assignmentType = document.getElementById('assignment-type').value;
+  const assignmentType = document.querySelector('input[name="assignmentType"]:checked')?.value || 'random';
 
   // Csapat nevek összegyűjtése (üres → placeholder érték)
   const teamNames = Array.from(document.querySelectorAll('.team-name-field'))
