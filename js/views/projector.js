@@ -124,11 +124,6 @@ function _renderPlaying(el, game) {
     ? (players[currentTurn.activePlayerId]?.name ?? '')
     : '';
 
-  // Táblaállás pozíciók (%)
-  const tokenPositions = teams.map(t =>
-    Math.min(96, Math.max(4, (t.score / boardLength) * 92 + 4))
-  );
-
   el.innerHTML = `
     <!-- ── Fejléc: pontszámok + kód ──────────────────────── -->
     <div class="projector-header">
@@ -144,56 +139,44 @@ function _renderPlaying(el, game) {
       </div>
     </div>
 
-    <!-- ── Fő terület: timer + kör info ──────────────────── -->
-    <div class="projector-main" style="flex:1">
+    <!-- ── Fő terület: bal sáv + kígyótábla ─────────────── -->
+    <div style="flex:1;display:flex;gap:1.5rem;min-height:0;width:100%;overflow:hidden">
 
-      <!-- Timer -->
-      <div class="timer-block">
-        <div id="proj-timer" class="timer-display ${phaseInfo.colorClass}">
-          ${formatTime(phaseInfo.secondsLeft)}
+      <!-- Bal oldal: timer + kör info -->
+      <div class="projector-sidebar">
+        <div class="timer-block">
+          <div id="proj-timer" class="timer-display ${phaseInfo.colorClass}">
+            ${formatTime(phaseInfo.secondsLeft)}
+          </div>
+          <div id="proj-label" class="phase-label ${phaseInfo.colorClass}"
+               style="margin-top:0.75rem;font-size:1.1rem">
+            ${timerStartedAt ? phaseInfo.label : (timerHasValue ? 'Timer szünetel' : 'Várakozás...')}
+          </div>
         </div>
-        <div id="proj-label" class="phase-label ${phaseInfo.colorClass}"
-             style="margin-top:0.75rem;font-size:1.2rem">
-          ${timerStartedAt ? phaseInfo.label : (timerHasValue ? 'Timer szünetel' : 'Várakozás...')}
+
+        <div class="turn-info">
+          <div class="turn-team" style="color:${activeColor}">
+            ${_esc(activeTeam.name || '–')}
+          </div>
+          ${activePlayer
+            ? `<div class="turn-player">${_esc(activePlayer)} teljesít</div>`
+            : ''}
+          ${currentTurn.taskType && currentTurn.wordRevealed
+            ? `<div class="task-type-badge"
+                    style="color:${activeColor};border:2px solid ${activeColor}40">
+                 ${_esc(currentTurn.taskType)}
+               </div>
+               <div class="task-points">⭐ ${currentTurn.points ?? '–'} pont</div>`
+            : currentTurn.word && !currentTurn.wordRevealed
+              ? '<div class="projector-prepare-badge">⏳ Felkészülés...</div>'
+              : '<div class="task-points" style="color:#444">Kör hamarosan indul...</div>'
+          }
         </div>
       </div>
 
-      <!-- Kör info (NEM mutatjuk a szót!) -->
-      <div class="turn-info">
-        <div class="turn-team" style="color:${activeColor}">
-          ${_esc(activeTeam.name || '–')}
-        </div>
-        ${activePlayer
-          ? `<div class="turn-player">${_esc(activePlayer)} teljesít</div>`
-          : ''}
-        ${currentTurn.taskType && currentTurn.wordRevealed
-          ? `<div class="task-type-badge"
-                  style="color:${activeColor};border:2px solid ${activeColor}40">
-               ${_esc(currentTurn.taskType)}
-             </div>
-             <div class="task-points">⭐ ${currentTurn.points ?? '–'} pont</div>`
-          : currentTurn.word && !currentTurn.wordRevealed
-            ? '<div class="projector-prepare-badge">⏳ Felkészülés...</div>'
-            : '<div class="task-points" style="color:#444">Kör hamarosan indul...</div>'
-        }
-      </div>
-    </div>
-
-    <!-- ── Tábla (haladási sín) ───────────────────────────── -->
-    <div class="board-wrapper">
-      <div class="board">
-        <div class="board-squares">
-          ${Array(boardLength).fill(0).map(() =>
-            `<div class="board-square"></div>`).join('')}
-        </div>
-        <div class="board-tokens">
-          ${teams.map((t, i) => `
-            <div class="board-token"
-                 style="background:${TEAM_COLORS[i]};left:${tokenPositions[i]}%"
-                 title="${_esc(t.name)}: ${t.score} pt">
-              ${_esc(t.name.length > 5 ? t.name.slice(0, 5) + '…' : t.name)}
-            </div>`).join('')}
-        </div>
+      <!-- Jobb oldal: kígyótábla -->
+      <div style="flex:1;min-width:0;display:flex;overflow:hidden;align-items:stretch;justify-content:center">
+        ${_renderSnakeBoard(teams, boardLength)}
       </div>
     </div>
   `;
@@ -220,6 +203,80 @@ function _renderPlaying(el, game) {
       }
     }, 1000);
   }
+}
+
+// ── Kígyótábla renderelés ────────────────────────────────────
+function _renderSnakeBoard(teams, boardLength) {
+  // Oszlopszám a tábla hossza alapján
+  let cols;
+  if      (boardLength <= 12) cols = 4;
+  else if (boardLength <= 20) cols = 5;
+  else if (boardLength <= 32) cols = 6;
+  else if (boardLength <= 49) cols = 7;
+  else                        cols = 8;
+
+  // Csapatok mezőre leképezése: cellNum (1-indexed) → [teamIdx, ...]
+  const teamAt = {};
+  teams.forEach((t, i) => {
+    const cellNum = Math.min(Math.max(t.score, 0), boardLength - 1) + 1;
+    if (!teamAt[cellNum]) teamAt[cellNum] = [];
+    teamAt[cellNum].push(i);
+  });
+
+  const totalRows = Math.ceil(boardLength / cols);
+  let html = '<div class="snake-board">';
+
+  // Sorok felülről lefelé (legfelső sor = legmagasabb cellaszámok)
+  for (let d = 0; d < totalRows; d++) {
+    const r = totalRows - 1 - d; // board row (0=start alul, totalRows-1=cél felül)
+
+    // Összekötő sáv az előző és az aktuális sor között
+    if (d > 0) {
+      // r a LOWER board row; jobb oldalon van az összekötés ha r páros, bal oldalon ha páratlan
+      const connRight = r % 2 === 0;
+      html += '<div class="snake-connrow">';
+      for (let c = 0; c < cols; c++) {
+        const isConn = (connRight && c === cols - 1) || (!connRight && c === 0);
+        html += `<div class="${isConn ? 'snake-conn-cell' : 'snake-conn-spacer'}"></div>`;
+      }
+      html += '</div>';
+    }
+
+    html += '<div class="snake-row">';
+    for (let c = 0; c < cols; c++) {
+      // Páros sor (0, 2...): bal→jobb; páratlan (1, 3...): jobb→bal
+      const cellIdx = r % 2 === 0 ? r * cols + c : r * cols + (cols - 1 - c);
+      const cellNum = cellIdx + 1;
+
+      if (cellNum > boardLength) {
+        html += '<div class="snake-cell snake-cell-ghost"></div>';
+        continue;
+      }
+
+      const isStart = cellNum === 1;
+      const isEnd   = cellNum === boardLength;
+      const tokens  = teamAt[cellNum] || [];
+      let cls = 'snake-cell';
+      if (isStart)       cls += ' snake-cell-start';
+      else if (isEnd)    cls += ' snake-cell-end';
+      if (tokens.length) cls += ' has-token';
+
+      html += `<div class="${cls}">`;
+      html += `<span class="snake-num">${isStart ? '🏁' : isEnd ? '🏆' : cellNum}</span>`;
+      if (tokens.length) {
+        html += '<div class="snake-tokens">';
+        for (const ti of tokens) {
+          const initial = teams[ti].name.charAt(0).toUpperCase();
+          html += `<div class="snake-token" style="background:${TEAM_COLORS[ti]};box-shadow:0 0 10px ${TEAM_COLORS[ti]}99" title="${_esc(teams[ti].name)}">${initial}</div>`;
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
 }
 
 // ── XSS védelem ───────────────────────────────────────────────
