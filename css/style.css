@@ -1,5 +1,5 @@
 /* ============================================================
-   Space Activity – Galaktikus Csapatjáték  |  style.css
+   RMG Astro-Activity  |  style.css
    ============================================================ */
 
 /* ── CSS Variables ─────────────────────────────────────────── */
@@ -46,6 +46,29 @@ h1, h2, h3,
 .final-score-num,
 .winner-team-name {
   font-family: 'Orbitron', 'Rajdhani', system-ui, sans-serif;
+}
+
+/* ── Splash Screen ─────────────────────────────────────────── */
+#splash {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: opacity 0.7s ease;
+}
+#splash.fade-out { opacity: 0; pointer-events: none; }
+.splash-logo {
+  width: 100%;
+  height: auto;
+  display: block;
+  animation: splash-in 0.6s ease-out forwards;
+}
+@keyframes splash-in {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 /* ── View System ────────────────────────────────────────────── */
@@ -173,21 +196,170 @@ input:focus, select:focus {
 /* ============================================================
    VIEW 1 – LANDING
    ============================================================ */
-#view-landing { gap: 0; }
-#view-landing .logo {
-  font-size: 4.5rem;
-  margin-bottom: 0.25rem;
-  filter: drop-shadow(0 0 18px rgba(0,212,255,0.6));
+#view-landing {
+  gap: 0;
+  position: relative;
+  overflow: hidden;
+  justify-content: flex-start;
+  padding-top: clamp(1.5rem, 16vh, 7rem);
+  background:
+    radial-gradient(ellipse 60% 55% at 15% 50%, rgba(0,40,120,.5) 0%, transparent 65%),
+    radial-gradient(ellipse 55% 45% at 82% 28%, rgba(70,0,140,.35) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 40% at 50% 105%, rgba(0,60,70,.25) 0%, transparent 45%),
+    var(--bg);
 }
+
+/* Star field layers */
+.star-field {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.star-field::before, .star-field::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  border-radius: 50%;
+}
+.sf1::before {
+  width: 1px; height: 1px;
+  background: white;
+  box-shadow:
+    34px 23px rgba(255,255,255,.9), 267px 156px rgba(255,255,255,.6), 589px 78px rgba(200,220,255,.8),
+    812px 234px rgba(255,255,255,.7), 1045px 45px rgba(255,255,255,.9), 1289px 178px rgba(200,220,255,.6),
+    1534px 89px rgba(255,255,255,.8), 1756px 267px rgba(255,255,255,.5), 89px 312px rgba(200,220,255,.7),
+    345px 389px rgba(255,255,255,.9), 678px 345px rgba(200,220,255,.6), 1023px 412px rgba(255,255,255,.8),
+    1367px 378px rgba(200,220,255,.5), 1712px 445px rgba(255,255,255,.9), 156px 478px rgba(255,255,255,.7),
+    512px 523px rgba(200,220,255,.6), 845px 489px rgba(255,255,255,.8), 1189px 534px rgba(255,255,255,.5),
+    1534px 501px rgba(200,220,255,.9), 23px 578px rgba(255,255,255,.8), 267px 634px rgba(200,220,255,.6),
+    601px 612px rgba(255,255,255,.9), 934px 689px rgba(255,255,255,.7), 1278px 645px rgba(200,220,255,.5),
+    1623px 712px rgba(255,255,255,.8), 123px 756px rgba(255,255,255,.6), 456px 789px rgba(200,220,255,.9),
+    789px 745px rgba(255,255,255,.7), 1134px 812px rgba(255,255,255,.5), 1478px 778px rgba(200,220,255,.8),
+    1823px 801px rgba(255,255,255,.6), 34px 867px rgba(200,220,255,.5), 378px 834px rgba(255,255,255,.8),
+    712px 901px rgba(255,255,255,.7), 1056px 878px rgba(200,220,255,.9), 1401px 934px rgba(255,255,255,.6),
+    1745px 912px rgba(255,255,255,.8), 189px 967px rgba(200,220,255,.5), 534px 1023px rgba(255,255,255,.7),
+    878px 989px rgba(255,255,255,.9), 1223px 1045px rgba(200,220,255,.6), 1567px 1012px rgba(255,255,255,.8),
+    1867px 1067px rgba(200,220,255,.5), 67px 89px rgba(255,255,255,.8), 423px 567px rgba(200,220,255,.7),
+    756px 834px rgba(255,255,255,.6), 1101px 234px rgba(255,255,255,.9), 1445px 678px rgba(200,220,255,.5),
+    1789px 345px rgba(255,255,255,.7), 234px 756px rgba(255,255,255,.8), 578px 123px rgba(200,220,255,.6),
+    923px 456px rgba(255,255,255,.9), 1267px 890px rgba(200,220,255,.7), 1612px 567px rgba(255,255,255,.5),
+    312px 890px rgba(255,255,255,.7), 645px 234px rgba(200,220,255,.9), 978px 678px rgba(255,255,255,.6),
+    1323px 123px rgba(200,220,255,.5), 1756px 789px rgba(255,255,255,.8), 89px 434px rgba(200,220,255,.6),
+    445px 756px rgba(255,255,255,.9), 801px 312px rgba(255,255,255,.5), 1156px 567px rgba(200,220,255,.8),
+    1512px 890px rgba(255,255,255,.7), 1890px 456px rgba(200,220,255,.6), 234px 189px rgba(255,255,255,.8),
+    567px 678px rgba(200,220,255,.5), 901px 123px rgba(255,255,255,.9), 1245px 456px rgba(200,220,255,.7),
+    1589px 789px rgba(255,255,255,.6), 1934px 123px rgba(200,220,255,.9), 145px 367px rgba(255,255,255,.7),
+    489px 145px rgba(200,220,255,.8), 823px 623px rgba(255,255,255,.6), 1167px 456px rgba(200,220,255,.5),
+    1512px 234px rgba(255,255,255,.9), 1856px 678px rgba(200,220,255,.7);
+  animation: twinkle1 4s ease-in-out infinite;
+}
+.sf1::after {
+  width: 2px; height: 2px;
+  background: rgba(220,240,255,.9);
+  box-shadow:
+    145px 56px rgba(180,210,255,.9), 489px 234px rgba(220,240,255,.8), 823px 567px rgba(180,210,255,.7),
+    1167px 890px rgba(220,240,255,.9), 1512px 345px rgba(180,210,255,.6), 67px 678px rgba(220,240,255,.8),
+    412px 123px rgba(180,210,255,.9), 756px 456px rgba(220,240,255,.7), 1101px 789px rgba(180,210,255,.8),
+    1445px 234px rgba(220,240,255,.6), 1789px 567px rgba(180,210,255,.9), 234px 901px rgba(220,240,255,.7),
+    578px 345px rgba(180,210,255,.8), 923px 78px rgba(220,240,255,.9), 1267px 678px rgba(180,210,255,.6),
+    1612px 901px rgba(220,240,255,.8), 345px 512px rgba(180,210,255,.9), 689px 789px rgba(220,240,255,.8),
+    1034px 234px rgba(180,210,255,.6), 1378px 567px rgba(220,240,255,.9), 1723px 890px rgba(180,210,255,.7),
+    78px 234px rgba(220,240,255,.8), 445px 890px rgba(180,210,255,.6), 890px 345px rgba(220,240,255,.9),
+    1545px 678px rgba(180,210,255,.8);
+  animation: twinkle2 6.5s ease-in-out infinite -2.5s;
+}
+.sf2::before {
+  width: 1px; height: 1px;
+  background: white;
+  box-shadow:
+    89px 134px rgba(255,255,255,.6), 312px 478px rgba(200,220,255,.8), 534px 789px rgba(255,255,255,.7),
+    756px 234px rgba(200,220,255,.5), 978px 567px rgba(255,255,255,.9), 1201px 890px rgba(200,220,255,.6),
+    1423px 123px rgba(255,255,255,.8), 1645px 456px rgba(200,220,255,.7), 1868px 789px rgba(255,255,255,.5),
+    167px 345px rgba(200,220,255,.9), 389px 678px rgba(255,255,255,.6), 612px 123px rgba(200,220,255,.8),
+    834px 456px rgba(255,255,255,.7), 1056px 789px rgba(200,220,255,.5), 1278px 234px rgba(255,255,255,.9),
+    1501px 567px rgba(200,220,255,.6), 1723px 901px rgba(255,255,255,.8), 56px 567px rgba(200,220,255,.7),
+    278px 890px rgba(255,255,255,.5), 501px 345px rgba(200,220,255,.9), 723px 678px rgba(255,255,255,.6),
+    945px 123px rgba(200,220,255,.8), 1167px 456px rgba(255,255,255,.7), 1389px 789px rgba(200,220,255,.5),
+    1612px 234px rgba(255,255,255,.9), 1834px 567px rgba(200,220,255,.6), 134px 901px rgba(255,255,255,.8),
+    356px 234px rgba(200,220,255,.7), 578px 567px rgba(255,255,255,.5), 801px 900px rgba(200,220,255,.9),
+    1023px 345px rgba(255,255,255,.6), 1245px 678px rgba(200,220,255,.8), 1467px 123px rgba(255,255,255,.7),
+    1689px 456px rgba(200,220,255,.5), 1912px 789px rgba(255,255,255,.9), 212px 678px rgba(200,220,255,.6),
+    434px 123px rgba(255,255,255,.8), 656px 456px rgba(200,220,255,.7), 878px 789px rgba(255,255,255,.5),
+    1101px 234px rgba(200,220,255,.9), 1323px 567px rgba(255,255,255,.6), 1545px 901px rgba(200,220,255,.8),
+    1767px 345px rgba(255,255,255,.7), 289px 234px rgba(255,255,255,.9), 512px 567px rgba(200,220,255,.6),
+    734px 901px rgba(255,255,255,.8), 956px 345px rgba(200,220,255,.7), 1178px 678px rgba(255,255,255,.5),
+    1401px 123px rgba(200,220,255,.9), 1623px 456px rgba(255,255,255,.6), 1845px 789px rgba(200,220,255,.8),
+    78px 789px rgba(255,255,255,.7), 345px 123px rgba(200,220,255,.5), 623px 456px rgba(255,255,255,.9),
+    900px 789px rgba(200,220,255,.6), 1178px 123px rgba(255,255,255,.8), 1456px 456px rgba(200,220,255,.7),
+    1734px 789px rgba(255,255,255,.5);
+  animation: twinkle1 5.2s ease-in-out infinite -1.8s;
+}
+.sf2::after {
+  width: 2px; height: 2px;
+  background: rgba(200,220,255,.7);
+  box-shadow:
+    256px 178px 3px 1px rgba(200,220,255,.7), 678px 534px 2px 1px rgba(180,210,255,.6),
+    1023px 789px 3px 1px rgba(200,220,255,.8), 1456px 234px 2px 1px rgba(180,210,255,.7),
+    1823px 678px 3px 1px rgba(200,220,255,.6), 123px 890px 2px 1px rgba(180,210,255,.9),
+    567px 345px 3px 1px rgba(200,220,255,.7), 901px 678px 2px 1px rgba(180,210,255,.6),
+    1234px 123px 3px 1px rgba(200,220,255,.8), 1590px 789px 2px 1px rgba(180,210,255,.7),
+    345px 234px 3px 1px rgba(180,210,255,.9), 789px 890px 2px 1px rgba(200,220,255,.7),
+    1134px 456px 3px 1px rgba(180,210,255,.6), 1534px 567px 2px 1px rgba(200,220,255,.8),
+    1956px 456px 2px 1px rgba(200,220,255,.6);
+  animation: twinkle2 8s ease-in-out infinite -4s;
+}
+@keyframes twinkle1 {
+  0%, 100% { opacity: 1; }
+  45%       { opacity: .2; }
+  70%       { opacity: .8; }
+}
+@keyframes twinkle2 {
+  0%, 100% { opacity: .7; }
+  30%       { opacity: 1; }
+  65%       { opacity: .1; }
+}
+
+/* Planets */
+.space-planet { position: absolute; border-radius: 50%; pointer-events: none; }
+.sp-1 {
+  width: 260px; height: 260px;
+  top: 12%; left: 50%;
+  transform: translateX(-50%);
+  background:
+    /* surface texture patches */
+    radial-gradient(ellipse 42% 28% at 32% 38%, rgba(179, 178, 183, 0.88) 0%, transparent 100%),
+    radial-gradient(ellipse 26% 22% at 63% 26%, rgba(63, 55, 207, 0.92) 0%, transparent 100%),
+    radial-gradient(ellipse 34% 18% at 56% 60%, rgba(91, 27, 133, 0.78) 0%, transparent 100%),
+    radial-gradient(ellipse 20% 30% at 74% 52%, rgba(25, 15, 112, 0.84) 0%, transparent 100%),
+    radial-gradient(ellipse 18% 22% at 20% 64%, rgba(90,15,100,.70) 0%, transparent 100%),
+    radial-gradient(ellipse 28% 14% at 46% 20%, rgba(55,40,130,.65) 0%, transparent 100%),
+    radial-gradient(ellipse 32% 20% at 40% 78%, rgba(12,8,60,.90) 0%, transparent 100%),
+    radial-gradient(ellipse 22% 18% at 58% 82%, rgba(130, 21, 166, 0.74) 0%, transparent 100%),
+    /* base sphere shading */
+    radial-gradient(circle at 36% 32%, #3a2a9e 0%, #1a0e6a 28%, #0d0840 52%, #060320 72%, #020110);
+  box-shadow:
+    0 0 90px rgba(80,40,200,.5),
+    0 0 55px 28px rgba(60,20,160,.2),
+    inset -30px -20px 55px rgba(0,0,0,.88);
+}
+
+#view-landing > * { position: relative; z-index: 1; }
+/* Decorative absolute elements must not be affected by the rule above */
+#view-landing .star-field,
+#view-landing .space-planet { position: absolute; z-index: 0; }
 #view-landing h1 {
   font-size: 2.6rem;
   font-weight: 900;
   margin-bottom: 0.4rem;
+  margin-top: 0.5rem;
   color: var(--primary);
   text-shadow: 0 0 20px rgba(0,212,255,0.6), 0 0 50px rgba(0,212,255,0.25);
   letter-spacing: 0.2em;
+  text-align: center;
+  padding-left: 0.2em;
 }
-#view-landing .subtitle { color: var(--text-muted); font-size: 1.05rem; margin-bottom: 2.5rem; letter-spacing: 0.06em; }
+#view-landing .subtitle { color: var(--primary); font-size: 1.05rem; margin-bottom: 5rem; letter-spacing: 0.06em; }
 
 #view-landing .btn-group {
   display: flex;

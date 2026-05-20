@@ -10,8 +10,10 @@ export function renderLanding() {
   const el = document.getElementById('view-landing');
 
   el.innerHTML = `
-    <div class="logo">🚀</div>
-    <h1>ACTIVITY</h1>
+    <div class="star-field sf1" aria-hidden="true"></div>
+    <div class="star-field sf2" aria-hidden="true"></div>
+    <div class="space-planet sp-1" aria-hidden="true"></div>
+    <h1>RMG ASTRO-ACTIVITY</h1>
     <p class="subtitle">Valós idejű galaktikus csapatjáték</p>
 
     <div class="btn-group">

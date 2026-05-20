@@ -51,7 +51,7 @@ function _renderLobby(el, game) {
     <div style="margin:auto;text-align:center;color:#fff;width:100%;max-width:900px;padding:2rem">
       <div style="font-size:1rem;color:#333;text-transform:uppercase;
                   letter-spacing:0.2em;margin-bottom:1.5rem">
-        Space Activity – Galaktikus Csapatjáték
+        RMG Astro-Activity
       </div>
       <div style="font-size:1.1rem;color:#3d6a8a;margin-bottom:0.75rem">
         Csatlakozz a misszióhoz a kóddal:

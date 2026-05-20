@@ -114,8 +114,16 @@ const params  = new URLSearchParams(window.location.search);
 const urlRole = params.get('role');
 const urlRoom = params.get('room');
 
+function _hideSplash() {
+  const s = document.getElementById('splash');
+  if (!s) return;
+  s.classList.add('fade-out');
+  setTimeout(() => s.remove(), 700);
+}
+
 if (urlRole === 'projector' && urlRoom) {
   // ── Kivetítő ablak ─────────────────────────────────────────
+  document.getElementById('splash')?.remove();
   // Ezt a window.open() nyitja meg a host vezérlőpultjáról.
   const code = urlRoom.toUpperCase();
   state.gameCode = code;
@@ -138,8 +146,11 @@ if (urlRole === 'projector' && urlRoom) {
 
 } else {
   // ── Normál alkalmazás ──────────────────────────────────────
-  showView('view-landing');
-  renderLanding();
+  setTimeout(() => {
+    _hideSplash();
+    showView('view-landing');
+    renderLanding();
+  }, 4000);
 }
 
 // ── Exportok más view-moduloknak ──────────────────────────────
