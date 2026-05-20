@@ -1,11 +1,11 @@
 /**
  * views/host-game.js – View 4/B: Host Vezérlőpult (teljes implementáció)
  * ════════════════════════════════════════════════════════════════════════
- * - Titkos szó kártya + "Feladvány újrasorsolása"
+ * - Titkosított adatcsomag kártya + "Adatcsomag újrasorsolása"
  * - Timer: fázisszínes visszaszámlálás (helyi setInterval)
- * - Pontozó gombok (engedélyezve timer indítás után)
- * - Táblaállás sávdiagrammal
- * - Következő feladványok + Előzmények
+ * - Pontozó gombok (engedélyezve adatátvitel indítás után)
+ * - Csillagtérkép állása sávdiagrammal
+ * - Következő küldetések + Múlt küldetések
  */
 
 import { showToast }                                     from '../app.js';
@@ -72,7 +72,7 @@ export function renderHostGame(game, appState) {
               : ''}
           </span>
         </div>
-        <button class="btn btn-secondary" id="btn-open-projector">📺 Kivetítő</button>
+        <button class="btn btn-secondary" id="btn-open-projector">🌌 Kivetítő</button>
       </div>
 
       <div class="host-game-layout">
@@ -80,31 +80,31 @@ export function renderHostGame(game, appState) {
         <!-- ── BAL OSZLOP ───────────────────────────────────── -->
         <div class="host-main">
 
-          <!-- Titkos szó -->
+          <!-- Titkosított adatcsomag -->
           <div class="card secret-word-card" style="border-color:${activeColor}">
             ${currentTurn.word
-              ? `<div class="secret-word-label">Titkos szó</div>
+              ? `<div class="secret-word-label">Titkosított adatcsomag</div>
                  <div class="secret-word">${_esc(currentTurn.word)}</div>
                  <div class="task-meta">
                    <span>🎯 ${_esc(currentTurn.taskType || '–')}</span>
-                   <span>⭐ ${currentTurn.points ?? '–'} pont</span>
+                   <span>⭐ ${currentTurn.points ?? '–'} fényév</span>
                  </div>`
-              : `<p class="text-muted">Nincs aktív feladvány.</p>`
+              : `<p class="text-muted">Nincs aktív küldés.</p>`
             }
           </div>
 
-          <!-- Feladvány felfedése + Újrasorsolás (csak timer előtt) -->
+          <!-- Adatcsomag felfedése + Újrasorsolás (csak adatátvitel előtt) -->
           ${!timerHasValue && currentTurn.word ? `
             <div style="text-align:center;display:flex;flex-direction:column;gap:0.6rem;align-items:center">
               ${!wordRevealed ? `
                 <button class="btn-reveal" id="btn-reveal-word">
-                  👁 Feladvány felfedése a játékosnak
+                  👁 Adatcsomag felfedése az asztronautának
                 </button>
                 <span style="font-size:0.78rem;color:var(--text-muted)">
-                  A játékos még nem látja a feladványt
+                  Az asztronáuta még nem látja az adatcsomagot
                 </span>` : ''}
               <button class="btn btn-secondary" id="btn-reroll">
-                🔀 Feladvány újrasorsolása
+                🔀 Adatcsomag újrasorsolása
               </button>
             </div>` : ''}
 
@@ -117,12 +117,12 @@ export function renderHostGame(game, appState) {
                  style="margin-top:0.6rem">
               ${timerRunning
                 ? phaseInfo.label
-                : (timerHasValue ? 'Timer szüneteltetve' : 'Nyomd meg az ▶ gombot a kör indításához')}
+                : (timerHasValue ? 'Adatátvitel szüneteltetve' : 'Indítsd az adatátvitelt!')}
             </div>
             <div class="host-controls" style="margin-top:1rem">
               <button class="btn btn-success btn-lg" id="btn-start-timer"
                    ${startEnabled ? '' : 'disabled'}>
-                ${timerHasValue ? '▶ Folytatás' : '▶ Idő indítása'}
+                ${timerHasValue ? '▶ Folytatás' : '▶ Adatátvitel indítása'}
               </button>
               <button class="btn btn-warning" id="btn-pause-timer"
                    ${canPause ? '' : 'disabled'}>
@@ -138,10 +138,10 @@ export function renderHostGame(game, appState) {
           <!-- Pontozó gombok -->
           <div class="card scoring-section">
             <h3>
-              Pontozás
+              Pontozás (fényév)
               ${!scoringEnabled
                 ? '<span style="font-size:0.78rem;font-weight:400;margin-left:0.4rem">' +
-                  '(timer indítása után aktív)</span>'
+                  '(adatátvitel indítása után aktív)</span>'
                 : ''}
             </h3>
             <div class="scoring-btns">
@@ -150,21 +150,21 @@ export function renderHostGame(game, appState) {
                                score-btn"
                         data-team="${i}"
                         ${scoringEnabled ? '' : 'disabled'}>
-                  ✅ ${_esc(t.name)} kitalálta
+                  ✅ ${_esc(t.name)} visszafejtette
                   <span style="opacity:0.75;margin-left:0.3rem">
-                    (+${currentTurn.points ?? '?'} pt)
-                    ${i === currentTurn.teamIndex ? '⭐' : '⚡ rabolt'}
+                    (+${currentTurn.points ?? '?'} fényév)
+                    ${i === currentTurn.teamIndex ? '⭐' : '⚡ elfogott'}
                   </span>
                 </button>`).join('')}
               <button class="btn btn-danger score-btn-noscore"
                       id="btn-no-score" ${scoringEnabled ? '' : 'disabled'}>
-                ❌ Senki sem találta ki
+                ❌ Senki sem fejtette vissza
               </button>
             </div>
 
             <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
               <div style="display:flex;align-items:baseline;gap:0.6rem;margin-bottom:0.7rem">
-                <h4 style="font-size:0.92rem;margin:0">Osztozott pontozás</h4>
+                <h4 style="font-size:0.92rem;margin:0">Megosztott fényévek</h4>
                 <span style="font-size:0.78rem;color:var(--text-muted)">
                   A pontok a kijelölt csapatok között egyenlően oszlanak, lefelé kerekítve.
                 </span>
@@ -180,7 +180,7 @@ export function renderHostGame(game, appState) {
                   </label>`).join('')}
               </div>
               <button class="btn btn-primary" id="btn-award-shared" ${scoringEnabled ? '' : 'disabled'}>
-                🤝 Osztott pontozás könyvelése
+                🤝 Megosztott fényévek rögzítése
               </button>
             </div>
           </div>
@@ -190,9 +190,9 @@ export function renderHostGame(game, appState) {
         <!-- ── JOBB OLDALSÁV ─────────────────────────────────── -->
         <div class="host-sidebar">
 
-          <!-- Táblaállás -->
+          <!-- Csillagtérkép állása -->
           <div class="card dashboard-section">
-            <h3>Táblaállás</h3>
+            <h3>Csillagtérkép állása</h3>
             ${teams.map((t, i) => {
               const boardLen = game.settings?.boardLength || 30;
               const pct = Math.min(100, Math.round((t.score / boardLen) * 100));
@@ -216,24 +216,24 @@ export function renderHostGame(game, appState) {
             }).join('')}
           </div>
 
-          <!-- Következő feladványok -->
+          <!-- Következő küldetések -->
           <div class="card dashboard-section">
-            <h3>Következő feladványok</h3>
+            <h3>Következő küldetések</h3>
             <div class="upcoming-list">
               ${Array.isArray(game.upcomingTurns) && game.upcomingTurns.length > 0
                 ? game.upcomingTurns.slice(0, 3).map(t => `
                     <div class="upcoming-item">
                       <span class="upcoming-word">${_esc(t.word)}</span>
-                      <span class="upcoming-meta">${_esc(t.taskType)} · ${t.points} pt</span>
+                      <span class="upcoming-meta">${_esc(t.taskType)} · ${t.points} fényév</span>
                     </div>`).join('')
-                : '<p class="text-muted" style="font-size:0.85rem">Nincs előre generált feladvány</p>'
+                : '<p class="text-muted" style="font-size:0.85rem">Nincs előre generált küldetés</p>'
               }
             </div>
           </div>
 
-          <!-- Előzmények -->
+          <!-- Múlt küldetések -->
           <div class="card dashboard-section">
-            <h3>Előzmények</h3>
+            <h3>Múlt küldetések</h3>
             <div class="history-list">
               ${Array.isArray(game.turnHistory) && game.turnHistory.length > 0
                 ? [...game.turnHistory].reverse().slice(0, 15).map(h => `
@@ -241,12 +241,12 @@ export function renderHostGame(game, appState) {
                       <span class="history-word" title="${_esc(h.word)}">${_esc(h.word)}</span>
                       <span class="history-result ${h.result || 'unsolved'}">
                         ${h.result === 'solved'   ? '✓ kitalálva'
-                        : h.result === 'stolen'   ? '⚡ rabolt'
+                        : h.result === 'stolen'   ? '⚡ elfogott'
                         : h.result === 'shared'   ? '🤝 megosztva'
-                        :                           '✗ nem találta'}
+                        :                           '✗ nem fejtette vissza'}
                       </span>
                     </div>`).join('')
-                : '<p class="text-muted" style="font-size:0.85rem">Még nincs lezárt kör</p>'
+                : '<p class="text-muted" style="font-size:0.85rem">Még nincs lezárt küldetés</p>'
               }
             </div>
           </div>
@@ -396,7 +396,7 @@ export function renderHostGame(game, appState) {
 
       const info = getPhaseInfo(timerStartedAt, timerElapsedMs);
       timerEl.className = `host-timer-display ${info.colorClass}`;
-      timerEl.textContent = formatTime(info.secondsLeft);
+      timerEl.innerHTML = formatTime(info.secondsLeft);
 
       if (labelEl) {
         labelEl.className = `phase-label ${info.colorClass}`;

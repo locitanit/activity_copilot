@@ -14,7 +14,7 @@ export function renderWinner(game, appState) {
 
   const teams = game.teams || [];
 
-  // Győztes meghatározása: legtöbb pont
+  // Győztes meghatározása: legtöbb fényév
   const winner = teams.reduce(
     (best, t, i) => (t.score > best.score ? { ...t, index: i } : best),
     { ...teams[0], index: 0 }
@@ -23,8 +23,8 @@ export function renderWinner(game, appState) {
   el.innerHTML = `
     <div class="winner-container">
       <div class="trophy">🏆</div>
-      <h1>Játék vége!</h1>
-      <p class="text-muted" style="margin-bottom:0.5rem">Győztes csapat</p>
+      <h1>Misszió lezárva!</h1>
+      <p class="text-muted" style="margin-bottom:0.5rem">Győztes flotta</p>
       <div class="winner-team-name" style="color:${TEAM_COLORS[winner.index] ?? '#fbbf24'}">
         ${_esc(winner.name)}
       </div>
@@ -41,7 +41,7 @@ export function renderWinner(game, appState) {
 
       <!-- Újraindítás -->
       <button class="btn btn-primary btn-lg" id="btn-new-game-winner">
-        🎮 Új játék indítása
+        🚀 Új misszió indítása
       </button>
     </div>
   `;

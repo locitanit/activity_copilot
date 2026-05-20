@@ -1,8 +1,8 @@
 /**
  * views/player-game.js – View 4/C: Játékos nézet játék közben (teljes implementáció)
  * ─────────────────────────────────────────────────────────────────────────────────
- * Aktív játékos : látja a titkos szót (arany), timer, táblaállás
- * Passzív játékos: NEM látja a szót, csak feladattípust, timert, táblaállást
+ * Aktív játékos : látja a titkosított adatcsomagot (arany), timer, csillagtérkép állása
+ * Passzív játékos: NEM látja a szót, csak feladattípust, timert, csillagtérkép állását
  */
 
 import { getElapsedMs, getPhaseInfo, formatTime } from '../logic/timer.js';
@@ -39,7 +39,7 @@ export function renderPlayerGame(game, appState) {
   const myColor        = myTeamIdx >= 0 ? TEAM_COLORS[myTeamIdx] : '#888';
   const isTeamActive   = !isActive && currentTurn.teamIndex === myTeamIdx && myTeamIdx >= 0;
   const role           = isActive ? 'active' : (isTeamActive ? 'guesser' : 'passive');
-  const roleLabel      = isActive ? '🏖 Soron vagy!' : (isTeamActive ? '🔍 Kitaláló' : '👀 Néző');
+  const roleLabel      = isActive ? '🚀 Küldetésen vagy!' : (isTeamActive ? '🔬 Visszafejtő' : '📡 Megfigyelő');
 
   const activeTeam  = teams[currentTurn.teamIndex] || {};
   const activeColor = TEAM_COLORS[currentTurn.teamIndex] || '#888';
@@ -58,32 +58,32 @@ export function renderPlayerGame(game, appState) {
       <!-- Aktív csapat / feladat fejléc -->
       <div class="card text-center" style="width:100%;border-color:${isActive ? myColor : activeColor}">
         ${isActive
-        ? `<p class="text-muted" style="font-size:0.82rem;margin-bottom:0.25rem">A te feladatod</p>
+        ? `<p class="text-muted" style="font-size:0.82rem;margin-bottom:0.25rem">A te k\u00fcldet\u00e9sed</p>
            <p style="font-size:1.1rem;font-weight:700;color:${myColor}">${_esc(myTeam?.name ?? '')}</p>`
-        : `<p class="text-muted" style="font-size:0.82rem;margin-bottom:0.25rem">Soron lévő csapat</p>
+        : `<p class="text-muted" style="font-size:0.82rem;margin-bottom:0.25rem">Aktív flotta</p>
            <p style="font-size:1.1rem;font-weight:700;color:${activeColor}">${_esc(activeTeam.name ?? '?')}</p>
            ${currentTurn.activePlayerId && players[currentTurn.activePlayerId]
              ? `<p class="text-muted" style="font-size:0.85rem;margin-top:0.2rem">
-                  ${_esc(players[currentTurn.activePlayerId].name)} teljesít
+                  ${_esc(players[currentTurn.activePlayerId].name)} teljesíti a küldetést
                 </p>`
              : ''}`
         }
         <div class="task-meta" style="justify-content:center;margin-top:0.6rem">
           <span>🎯 ${_esc(currentTurn.taskType ?? '–')}</span>
-          <span>⭐ ${currentTurn.points ?? '–'} pont</span>
+          <span>⭐ ${currentTurn.points ?? '–'} fényév</span>
         </div>
       </div>
 
       <!-- Titkos szó / Felkészülés / Rejtve -->
       ${isActive && currentTurn.word && currentTurn.wordRevealed
         ? `<div class="card" style="width:100%;text-align:center;border-color:#fbbf24">
-             <p class="secret-word-label">🤫 Titkos szó – csak te látod!</p>
+             <p class="secret-word-label">🤫 Titkosított adatcsomag – csak te látod!</p>
              <p class="player-word-reveal">${_esc(currentTurn.word)}</p>
            </div>`
         : isActive && !currentTurn.wordRevealed
           ? `<div class="card player-prepare-card" style="width:100%;text-align:center">
-               <p class="player-prepare-msg">⏳ Készülj fel!</p>
-               <p class="player-prepare-sub">A játékmester hamarosan felfedi a feladványodat.</p>
+               <p class="player-prepare-msg">🚀 Felkészülés!</p>
+               <p class="player-prepare-sub">Az Irányítóközpont hamarosan felfedi az adatcsomagodat.</p>
                <p class="player-prepare-sub">Addig menj ki a teremből, ha szükséges!</p>
              </div>`
           : `<div class="card text-center" style="width:100%">
@@ -97,14 +97,14 @@ export function renderPlayerGame(game, appState) {
           ${formatTime(phaseInfo.secondsLeft)}
         </div>
         <div id="pg-label" class="phase-label ${phaseInfo.colorClass}" style="margin-top:0.5rem">
-          ${timerStartedAt ? phaseInfo.label : (timerHasValue ? 'Timer szüneteltetve' : 'Timer még nem indult el')}
+          ${timerStartedAt ? phaseInfo.label : (timerHasValue ? 'Adatátvitel szüneteltetve' : 'Adatátvitel még nem indult')}
         </div>
       </div>
 
       <!-- Táblaállás (kompakt) -->
       <div class="card" style="width:100%">
         <h3 style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;
-                   letter-spacing:0.08em;margin-bottom:0.6rem">Állás</h3>
+                   letter-spacing:0.08em;margin-bottom:0.6rem">Csillagtérkép állása</h3>
         ${teams.map((t, i) => {
           const boardLen = game.settings?.boardLength || 30;
           const pct = Math.min(100, Math.round((t.score / boardLen) * 100));
@@ -135,7 +135,7 @@ export function renderPlayerGame(game, appState) {
 
       const info = getPhaseInfo(timerStartedAt, timerElapsedMs);
       timerEl.className = `host-timer-display ${info.colorClass}`;
-      timerEl.textContent = formatTime(info.secondsLeft);
+      timerEl.innerHTML = formatTime(info.secondsLeft);
 
       if (labelEl) {
         labelEl.className = `phase-label ${info.colorClass}`;

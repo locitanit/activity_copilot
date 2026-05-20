@@ -21,23 +21,23 @@ export function renderHostSetup() {
   el.innerHTML = `
     <div class="setup-container">
       <div class="setup-header">
-        <h1>⚙️ Játék beállítások</h1>
-        <p class="setup-subtitle">Állítsd be a játékot, majd indítsd a lobbyt!</p>
+        <h1>⚙️ Misszió beállítások</h1>
+        <p class="setup-subtitle">Konfiguráld a missziót, majd indítsd az Irányítóközpontot!</p>
       </div>
 
-      <!-- Csapatok kártya -->
+      <!-- Flották kártya -->
       <div class="setup-card">
-        <h2 class="setup-section-title">👥 Csapatok</h2>
+        <h2 class="setup-section-title">🚀 Űrflották</h2>
 
         <div class="form-group">
-          <div class="setup-field-label">Csapatok száma</div>
+          <div class="setup-field-label">Flották száma</div>
           <select id="team-count">
-            ${[2,3,4,5,6].map(n => `<option value="${n}"${n === 3 ? ' selected' : ''}>${n} csapat</option>`).join('')}
+            ${[2,3,4,5,6].map(n => `<option value="${n}"${n === 3 ? ' selected' : ''}>${n} flotta</option>`).join('')}
           </select>
         </div>
 
         <div class="form-group">
-          <div class="setup-field-label">Csapatba osztás módja</div>
+          <div class="setup-field-label">Flottabeosztás módja</div>
           <div class="radio-pill-group">
             <label class="radio-pill">
               <input type="radio" name="assignmentType" value="random" checked>
@@ -53,16 +53,16 @@ export function renderHostSetup() {
         </div>
 
         <div class="form-group">
-          <div class="setup-field-label">Csapatnevek</div>
+          <div class="setup-field-label">Flottanevek</div>
           <div class="team-names-container" id="team-names-container"></div>
         </div>
       </div>
 
-      <!-- Pálya kártya -->
+      <!-- Csillagtérkép kártya -->
       <div class="setup-card">
-        <h2 class="setup-section-title">🏁 Pálya</h2>
+        <h2 class="setup-section-title">🌌 Csillagtérkép</h2>
         <div class="form-group">
-          <div class="setup-field-label">Tábla hossza (cél pontszám)</div>
+          <div class="setup-field-label">Térkép hossza (céltávolság)</div>
           <div class="range-row">
             <input id="board-length" type="range" min="5" max="60" value="30">
             <span class="range-value" id="board-length-val">30</span>
@@ -72,7 +72,7 @@ export function renderHostSetup() {
 
       <!-- Témakörök kártya -->
       <div class="setup-card">
-        <h2 class="setup-section-title">🎯 Témakörök</h2>
+        <h2 class="setup-section-title">📡 Adatbázisok</h2>
         ${topicKeys.length === 0
           ? `<p style="color:var(--warning);font-size:0.88rem">
                ⚠️ Nincs téma definiálva a <code>js/data/topics.js</code> fájlban.
@@ -92,7 +92,7 @@ export function renderHostSetup() {
 
       <!-- Feladattípusok kártya -->
       <div class="setup-card">
-        <h2 class="setup-section-title">🎯 Feladattípusok</h2>
+        <h2 class="setup-section-title">⚡ Küldetéstípusok</h2>
         <div class="pill-checkbox-group" id="task-types-group">
           ${TASK_TYPES.map(t => `
             <label class="pill-check">
@@ -106,8 +106,8 @@ export function renderHostSetup() {
 
       <!-- Gombok -->
       <div class="setup-actions">
-        <button class="btn btn-secondary" id="btn-setup-back">← Vissza</button>
-        <button class="btn btn-primary btn-lg" id="btn-create-lobby">🚀 Lobby indítása</button>
+        <button class="btn btn-secondary" id="btn-setup-back">← Visszatérés</button>
+        <button class="btn btn-primary btn-lg" id="btn-create-lobby">🚀 Irányítóközpont indítása</button>
       </div>
     </div>
   `;

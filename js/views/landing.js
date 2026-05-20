@@ -10,26 +10,26 @@ export function renderLanding() {
   const el = document.getElementById('view-landing');
 
   el.innerHTML = `
-    <div class="logo">🎲</div>
-    <h1>Activity</h1>
-    <p class="subtitle">Valós idejű oktatási csapatjáték</p>
+    <div class="logo">🚀</div>
+    <h1>ACTIVITY</h1>
+    <p class="subtitle">Valós idejű galaktikus csapatjáték</p>
 
     <div class="btn-group">
       <button class="btn btn-primary btn-lg" id="btn-new-game">
-        ✨ Új játék létrehozása (Host)
+        🛸 Új misszió indítása
       </button>
       <button class="btn btn-secondary btn-lg" id="btn-join-game">
-        🔑 Csatlakozás kóddal
+        🔑 Belépés kóddal
       </button>
     </div>
 
     <!-- Csatlakozás overlay / modal -->
     <div class="overlay hidden" id="join-overlay">
       <div class="card modal">
-        <h2>Csatlakozás játékhoz</h2>
+        <h2>Belépés a misszióba</h2>
 
         <div class="form-group">
-          <label for="join-code">Játékkód</label>
+          <label for="join-code">Misszió-kód</label>
           <input
             id="join-code"
             type="text"
@@ -42,12 +42,12 @@ export function renderLanding() {
         </div>
 
         <div class="form-group">
-          <label for="join-name">A neved</label>
-          <input id="join-name" type="text" placeholder="Béla" maxlength="30" autocomplete="off" />
+          <label for="join-name">Asztronauta neve</label>
+          <input id="join-name" type="text" placeholder="Pl. Commandante" maxlength="30" autocomplete="off" />
         </div>
 
         <div class="modal-actions">
-          <button class="btn btn-primary btn-full" id="btn-join-confirm">Csatlakozás →</button>
+          <button class="btn btn-primary btn-full" id="btn-join-confirm">Belépés →</button>
           <button class="btn btn-secondary" id="btn-join-cancel">Mégse</button>
         </div>
       </div>

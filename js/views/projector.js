@@ -49,16 +49,16 @@ function _renderLobby(el, game) {
 
   el.innerHTML = `
     <div style="margin:auto;text-align:center;color:#fff;width:100%;max-width:900px;padding:2rem">
-      <div style="font-size:1rem;color:#444;text-transform:uppercase;
+      <div style="font-size:1rem;color:#333;text-transform:uppercase;
                   letter-spacing:0.2em;margin-bottom:1.5rem">
-        Activity – Oktatási Játék
+        Space Activity – Galaktikus Csapatjáték
       </div>
-      <div style="font-size:1.1rem;color:#555;margin-bottom:0.75rem">
-        Csatlakozz a játékhoz a kóddal:
+      <div style="font-size:1.1rem;color:#3d6a8a;margin-bottom:0.75rem">
+        Csatlakozz a misszióhoz a kóddal:
       </div>
       <div style="font-size:5rem;font-weight:900;letter-spacing:0.7rem;
-                  color:#2563eb;margin-bottom:2.5rem;
-                  text-shadow:0 0 40px rgba(37,99,235,0.4)">
+                  color:var(--primary);margin-bottom:2.5rem;
+                  text-shadow:0 0 40px rgba(0,212,255,0.6)">
         ${_esc(gameCode)}
       </div>
       <div style="display:flex;gap:1.5rem;justify-content:center;flex-wrap:wrap">
@@ -68,8 +68,8 @@ function _renderLobby(el, game) {
             ${_esc(t.name)}
           </div>`).join('')}
       </div>
-      <div style="margin-top:2.5rem;color:#333;font-size:1rem">
-        ⏳ Várakozás a játék kezdetére...
+      <div style="margin-top:2.5rem;color:#3d6a8a;font-size:1rem">
+        🛸 Várakozás a misszió kezdetére...
       </div>
     </div>
   `;
@@ -87,8 +87,8 @@ function _renderFinished(el, game) {
   el.innerHTML = `
     <div style="margin:auto;text-align:center;color:#fff;width:100%;max-width:900px">
       <div style="font-size:6rem;margin-bottom:1rem">🏆</div>
-      <div style="font-size:1.2rem;color:#555;margin-bottom:0.5rem;text-transform:uppercase;
-                  letter-spacing:0.15em">Győztes csapat</div>
+      <div style="font-size:1.2rem;color:#3d6a8a;margin-bottom:0.5rem;text-transform:uppercase;
+                  letter-spacing:0.15em">Győztes flotta</div>
       <div style="font-size:4.5rem;font-weight:900;
                   color:${TEAM_COLORS[winnerIdx] || '#fbbf24'};margin-bottom:2.5rem;
                   text-shadow:0 0 50px ${TEAM_COLORS[winnerIdx] || '#fbbf24'}80">
@@ -99,7 +99,7 @@ function _renderFinished(el, game) {
           <div style="background:var(--surface);border:2px solid ${TEAM_COLORS[i]};
                       border-radius:12px;padding:1rem 2rem;text-align:center">
             <div style="font-size:2.5rem;font-weight:900;color:${TEAM_COLORS[i]}">${t.score}</div>
-            <div style="font-size:1rem;color:#666;margin-top:0.25rem">${_esc(t.name)}</div>
+            <div style="font-size:1rem;color:#3d6a8a;margin-top:0.25rem">${_esc(t.name)}</div>
           </div>`).join('')}
       </div>
     </div>
@@ -140,7 +140,7 @@ function _renderPlaying(el, game) {
     </div>
 
     <!-- ── Fő terület: bal sáv + kígyótábla ─────────────── -->
-    <div style="flex:1;display:flex;gap:1.5rem;min-height:0;width:100%;overflow:hidden">
+    <div style="flex:1;display:flex;gap:1.5rem;min-height:0;width:100%;overflow:visible">
 
       <!-- Bal oldal: timer + kör info -->
       <div class="projector-sidebar">
@@ -150,7 +150,7 @@ function _renderPlaying(el, game) {
           </div>
           <div id="proj-label" class="phase-label ${phaseInfo.colorClass}"
                style="margin-top:0.75rem;font-size:1.1rem">
-            ${timerStartedAt ? phaseInfo.label : (timerHasValue ? 'Timer szünetel' : 'Várakozás...')}
+            ${timerStartedAt ? phaseInfo.label : (timerHasValue ? 'Adatátvitel szünetel' : 'Várakozás...')}
           </div>
         </div>
 
@@ -159,16 +159,16 @@ function _renderPlaying(el, game) {
             ${_esc(activeTeam.name || '–')}
           </div>
           ${activePlayer
-            ? `<div class="turn-player">${_esc(activePlayer)} teljesít</div>`
+            ? `<div class="turn-player">${_esc(activePlayer)} teljesíti a küldetést</div>`
             : ''}
           ${currentTurn.taskType && currentTurn.wordRevealed
             ? `<div class="task-type-badge"
                     style="color:${activeColor};border:2px solid ${activeColor}40">
                  ${_esc(currentTurn.taskType)}
                </div>
-               <div class="task-points">⭐ ${currentTurn.points ?? '–'} pont</div>`
+               <div class="task-points">⭐ ${currentTurn.points ?? '–'} fényév</div>`
             : currentTurn.word && !currentTurn.wordRevealed
-              ? '<div class="projector-prepare-badge">⏳ Felkészülés...</div>'
+              ? '<div class="projector-prepare-badge">🚀 Adatcsomag betöltése...</div>'
               : '<div class="task-points" style="color:#444">Kör hamarosan indul...</div>'
           }
         </div>
@@ -190,7 +190,7 @@ function _renderPlaying(el, game) {
 
       const info = getPhaseInfo(timerStartedAt, timerElapsedMs);
       timerEl.className = `timer-display ${info.colorClass}`;
-      timerEl.textContent = formatTime(info.secondsLeft);
+      timerEl.innerHTML = formatTime(info.secondsLeft);
 
       if (labelEl) {
         labelEl.className = `phase-label ${info.colorClass}`;

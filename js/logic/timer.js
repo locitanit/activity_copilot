@@ -2,10 +2,10 @@
  * logic/timer.js – Időzítő segédfüggvények
  * ══════════════════════════════════════════
  * Fázisok (90 másodperc összesen):
- *   Phase 1 –  0–30s : Csak a saját csapat!
- *   Phase 2 – 30–60s : Órai jegyzet használható!
- *   Phase 3 – 60–90s : RABOLHATÓ! Bárki bekiabálhatja!
- *   Phase 4 –   >90s : Lejárt az idő!
+ *   Fázis 1 –  0–30s : Titkosított csatorna (Zöld)
+ *   Fázis 2 – 30–60s : Adatbázis kapcsolat (Sárga)
+ *   Fázis 3 – 60–90s : Nyílt frekvencia – RABOLHATÓ! (Piros)
+ *   Fázis 4 –   >90s : Kapcsolat megszakadt!
  */
 
 export const TOTAL_SECONDS = 90;
@@ -32,7 +32,7 @@ export function getPhaseInfo(timerStartedAt, timerElapsedMs = 0) {
     return {
       phase:       0,
       secondsLeft: TOTAL_SECONDS,
-      label:       'Timer még nem fut',
+      label:       'Rendszer várakozik...',
       colorClass:  'phase-0',
     };
   }
@@ -41,15 +41,15 @@ export function getPhaseInfo(timerStartedAt, timerElapsedMs = 0) {
   const secondsLeft = Math.max(0, TOTAL_SECONDS - elapsedSec);
 
   if (elapsedSec < PHASE1_END) {
-    return { phase: 1, secondsLeft, label: 'Csak a saját csapat!',            colorClass: 'phase-1' };
+    return { phase: 1, secondsLeft, label: 'Titkosított csatorna',                  colorClass: 'phase-1' };
   }
   if (elapsedSec < PHASE2_END) {
-    return { phase: 2, secondsLeft, label: 'Órai jegyzet használható!',       colorClass: 'phase-2' };
+    return { phase: 2, secondsLeft, label: 'Adatbázis kapcsolat',                   colorClass: 'phase-2' };
   }
   if (elapsedSec < PHASE3_END) {
-    return { phase: 3, secondsLeft, label: 'RABOLHATÓ! Bárki bekiabálhatja!', colorClass: 'phase-3' };
+    return { phase: 3, secondsLeft, label: 'Nyílt frekvencia – RABOLHATÓ!',         colorClass: 'phase-3' };
   }
-  return     { phase: 4, secondsLeft: 0,  label: 'Lejárt az idő!',            colorClass: 'phase-3' };
+  return     { phase: 4, secondsLeft: 0,  label: 'Kapcsolat megszakadt!',           colorClass: 'phase-3' };
 }
 
 /**
@@ -60,5 +60,8 @@ export function getPhaseInfo(timerStartedAt, timerElapsedMs = 0) {
 export function formatTime(secondsLeft) {
   const m = Math.floor(secondsLeft / 60);
   const s = secondsLeft % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    .split('')
+    .map(c => `<span class="t-d">${c}</span>`)
+    .join('');
 }
