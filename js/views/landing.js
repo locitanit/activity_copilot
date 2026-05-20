@@ -10,7 +10,7 @@ export function renderLanding() {
   const el = document.getElementById('view-landing');
 
   el.innerHTML = `
-    <div class="logo">🎯</div>
+    <div class="logo">🎲</div>
     <h1>Activity</h1>
     <p class="subtitle">Valós idejű oktatási csapatjáték</p>
 
