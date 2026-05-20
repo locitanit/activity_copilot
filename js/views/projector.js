@@ -1,0 +1,229 @@
+/**
+ * views/projector.js – View 4/A: Kivetítő (teljes implementáció)
+ * ────────────────────────────────────────────────────────────────
+ * Publikus nézet az osztályterem falára vetítve.
+ * SOHA NEM mutatja a titkos szót.
+ * Megnyitja: host via window.open('?role=projector&room=KÓD')
+ *
+ * Layout (1280×720):
+ *   ┌─────────────────────────────────────────────────┐
+ *   │  [Piros:3] [Kék:1] [Zöld:0]        KÓD: ABCDEF │  ← header
+ *   │                                                 │
+ *   │   01:23          🎭 Kék csapat                  │  ← main
+ *   │  (timer)         Péter                          │
+ *   │                  [ Mutogatás ]                  │
+ *   │                  ⭐ 4 pont                       │
+ *   │                                                 │
+ *   │  ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━●     │  ← board
+ *   └─────────────────────────────────────────────────┘
+ */
+
+import { state }                    from '../app.js';
+import { getPhaseInfo, formatTime } from '../logic/timer.js';
+
+const TEAM_COLORS = ['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899'];
+
+let _timerInterval = null;
+
+// ── Fő export ─────────────────────────────────────────────────
+export function renderProjector(game) {
+  if (_timerInterval) { clearInterval(_timerInterval); _timerInterval = null; }
+
+  const el = document.getElementById('view-projector');
+
+  if (!game) {
+    el.innerHTML = '<p style="margin:auto;color:#555;font-size:1.5rem">Játék nem található.</p>';
+    return;
+  }
+
+  if (game.status === 'lobby')    { _renderLobby(el, game);    return; }
+  if (game.status === 'finished') { _renderFinished(el, game); return; }
+
+  _renderPlaying(el, game);
+}
+
+// ── Lobby nézet ───────────────────────────────────────────────
+function _renderLobby(el, game) {
+  const teams    = game.teams || [];
+  const gameCode = state.gameCode || '';
+
+  el.innerHTML = `
+    <div style="margin:auto;text-align:center;color:#fff;width:100%;max-width:900px;padding:2rem">
+      <div style="font-size:1rem;color:#444;text-transform:uppercase;
+                  letter-spacing:0.2em;margin-bottom:1.5rem">
+        Activity – Oktatási Játék
+      </div>
+      <div style="font-size:1.1rem;color:#555;margin-bottom:0.75rem">
+        Csatlakozz a játékhoz a kóddal:
+      </div>
+      <div style="font-size:5rem;font-weight:900;letter-spacing:0.7rem;
+                  color:#2563eb;margin-bottom:2.5rem;
+                  text-shadow:0 0 40px rgba(37,99,235,0.4)">
+        ${_esc(gameCode)}
+      </div>
+      <div style="display:flex;gap:1.5rem;justify-content:center;flex-wrap:wrap">
+        ${teams.map((t, i) => `
+          <div style="background:${TEAM_COLORS[i]};border-radius:12px;
+                      padding:0.75rem 1.75rem;font-size:1.3rem;font-weight:700;color:#fff">
+            ${_esc(t.name)}
+          </div>`).join('')}
+      </div>
+      <div style="margin-top:2.5rem;color:#333;font-size:1rem">
+        ⏳ Várakozás a játék kezdetére...
+      </div>
+    </div>
+  `;
+}
+
+// ── Győztes nézet ─────────────────────────────────────────────
+function _renderFinished(el, game) {
+  const teams = game.teams || [];
+  const winner = teams.reduce(
+    (best, t) => (t.score >= best.score ? t : best),
+    teams[0] || { name: '–', score: 0 }
+  );
+  const winnerIdx = teams.indexOf(winner);
+
+  el.innerHTML = `
+    <div style="margin:auto;text-align:center;color:#fff;width:100%;max-width:900px">
+      <div style="font-size:6rem;margin-bottom:1rem">🏆</div>
+      <div style="font-size:1.2rem;color:#555;margin-bottom:0.5rem;text-transform:uppercase;
+                  letter-spacing:0.15em">Győztes csapat</div>
+      <div style="font-size:4.5rem;font-weight:900;
+                  color:${TEAM_COLORS[winnerIdx] || '#fbbf24'};margin-bottom:2.5rem;
+                  text-shadow:0 0 50px ${TEAM_COLORS[winnerIdx] || '#fbbf24'}80">
+        ${_esc(winner.name)}
+      </div>
+      <div style="display:flex;gap:1.5rem;justify-content:center;flex-wrap:wrap">
+        ${teams.map((t, i) => `
+          <div style="background:var(--surface);border:2px solid ${TEAM_COLORS[i]};
+                      border-radius:12px;padding:1rem 2rem;text-align:center">
+            <div style="font-size:2.5rem;font-weight:900;color:${TEAM_COLORS[i]}">${t.score}</div>
+            <div style="font-size:1rem;color:#666;margin-top:0.25rem">${_esc(t.name)}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// ── Játék közbeni nézet ────────────────────────────────────────
+function _renderPlaying(el, game) {
+  const currentTurn    = game.currentTurn || {};
+  const teams          = game.teams       || [];
+  const players        = game.players     || {};
+  const timerStartedAt = currentTurn.timerStartedAt || null;
+  const phaseInfo      = getPhaseInfo(timerStartedAt);
+  const boardLength    = game.settings?.boardLength || 30;
+  const gameCode       = state.gameCode || '';
+
+  const activeTeam    = teams[currentTurn.teamIndex] || {};
+  const activeColor   = TEAM_COLORS[currentTurn.teamIndex] || '#888';
+  const activePlayer  = currentTurn.activePlayerId
+    ? (players[currentTurn.activePlayerId]?.name ?? '')
+    : '';
+
+  // Táblaállás pozíciók (%)
+  const tokenPositions = teams.map(t =>
+    Math.min(96, Math.max(4, (t.score / boardLength) * 92 + 4))
+  );
+
+  el.innerHTML = `
+    <!-- ── Fejléc: pontszámok + kód ──────────────────────── -->
+    <div class="projector-header">
+      <div class="projector-scores">
+        ${teams.map((t, i) => `
+          <div class="score-badge" style="background:${TEAM_COLORS[i]}">
+            ${_esc(t.name)}&nbsp;
+            <span style="font-size:1.3rem">${t.score}</span>
+          </div>`).join('')}
+      </div>
+      <div style="color:#444;font-size:0.9rem;letter-spacing:0.15em;font-weight:600">
+        ${_esc(gameCode)}
+      </div>
+    </div>
+
+    <!-- ── Fő terület: timer + kör info ──────────────────── -->
+    <div class="projector-main" style="flex:1">
+
+      <!-- Timer -->
+      <div class="timer-block">
+        <div id="proj-timer" class="timer-display ${phaseInfo.colorClass}">
+          ${formatTime(phaseInfo.secondsLeft)}
+        </div>
+        <div id="proj-label" class="phase-label ${phaseInfo.colorClass}"
+             style="margin-top:0.75rem;font-size:1.2rem">
+          ${timerStartedAt ? phaseInfo.label : 'Várakozás az időre...'}
+        </div>
+      </div>
+
+      <!-- Kör info (NEM mutatjuk a szót!) -->
+      <div class="turn-info">
+        <div class="turn-team" style="color:${activeColor}">
+          ${_esc(activeTeam.name || '–')}
+        </div>
+        ${activePlayer
+          ? `<div class="turn-player">${_esc(activePlayer)} teljesít</div>`
+          : ''}
+        ${currentTurn.taskType
+          ? `<div class="task-type-badge"
+                  style="color:${activeColor};border:2px solid ${activeColor}40">
+               ${_esc(currentTurn.taskType)}
+             </div>
+             <div class="task-points">⭐ ${currentTurn.points ?? '–'} pont</div>`
+          : '<div class="task-points" style="color:#444">Kör hamarosan indul...</div>'
+        }
+      </div>
+    </div>
+
+    <!-- ── Tábla (haladási sín) ───────────────────────────── -->
+    <div class="board-wrapper">
+      <div class="board">
+        <div class="board-squares">
+          ${Array(boardLength).fill(0).map(() =>
+            `<div class="board-square"></div>`).join('')}
+        </div>
+        <div class="board-tokens">
+          ${teams.map((t, i) => `
+            <div class="board-token"
+                 style="background:${TEAM_COLORS[i]};left:${tokenPositions[i]}%"
+                 title="${_esc(t.name)}: ${t.score} pt">
+              ${_esc(t.name.length > 5 ? t.name.slice(0, 5) + '…' : t.name)}
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ── Helyi timer interval (UI frissítés) ───────────────────
+  if (timerStartedAt) {
+    _timerInterval = setInterval(() => {
+      const timerEl = document.getElementById('proj-timer');
+      const labelEl = document.getElementById('proj-label');
+      if (!timerEl) { clearInterval(_timerInterval); _timerInterval = null; return; }
+
+      const info = getPhaseInfo(timerStartedAt);
+      timerEl.className = `timer-display ${info.colorClass}`;
+      timerEl.textContent = formatTime(info.secondsLeft);
+
+      if (labelEl) {
+        labelEl.className = `phase-label ${info.colorClass}`;
+        labelEl.textContent = info.label;
+      }
+
+      if (info.phase >= 4) {
+        clearInterval(_timerInterval);
+        _timerInterval = null;
+      }
+    }, 1000);
+  }
+}
+
+// ── XSS védelem ───────────────────────────────────────────────
+function _esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activity – Oktatási Játék</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- View 1: Főmenü -->
+    <div id="view-landing" class="view"></div>
+
+    <!-- View 2: Host Beállítások -->
+    <div id="view-host-setup" class="view"></div>
+
+    <!-- View 3: Váróterem (Host + Játékos) -->
+    <div id="view-lobby" class="view"></div>
+
+    <!-- View 4/A: Kivetítő – publikus táblán (window.open-nel nyílik) -->
+    <div id="view-projector" class="view"></div>
+
+    <!-- View 4/B: Host Vezérlőpult – privát -->
+    <div id="view-host-game" class="view"></div>
+
+    <!-- View 4/C: Játékos nézet – saját eszközön (aktív: látja a szót; passzív: nem) -->
+    <div id="view-player-game" class="view"></div>
+
+    <!-- View 5: Győztes Hirdetés -->
+    <div id="view-winner" class="view"></div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
