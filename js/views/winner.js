@@ -14,25 +14,26 @@ export function renderWinner(game, appState) {
 
   const teams = game.teams || [];
 
-  // Győztes meghatározása: legtöbb fényév
-  const winner = teams.reduce(
-    (best, t, i) => (t.score > best.score ? { ...t, index: i } : best),
-    { ...teams[0], index: 0 }
-  );
+  // Győztes(ek) meghatározása: legtöbb fényév (holtverseny esetén mindegyik)
+  const maxScore = Math.max(...teams.map(t => t.score));
+  const winners  = teams.map((t, i) => ({ ...t, index: i })).filter(t => t.score === maxScore);
+  const winnerIndexes = new Set(winners.map(w => w.index));
 
   el.innerHTML = `
     <div class="winner-container">
       <div class="trophy">🏆</div>
       <h1>Küldetés teljesítve!</h1>
-      <p class="text-muted" style="margin-bottom:0.5rem">Győztes flotta</p>
-      <div class="winner-team-name" style="color:${TEAM_COLORS[winner.index] ?? '#fbbf24'}">
-        ${_esc(winner.name)}
-      </div>
+      <p class="text-muted" style="margin-bottom:0.5rem">${winners.length > 1 ? 'Győztes flották' : 'Győztes flotta'}</p>
+      ${winners.map(w => `
+        <div class="winner-team-name" style="color:${TEAM_COLORS[w.index] ?? '#fbbf24'}">
+          ${_esc(w.name)}
+        </div>
+      `).join('')}
 
       <!-- Végeredmény -->
       <div class="final-scores">
         ${teams.map((t, i) => `
-          <div class="card final-score-card ${i === winner.index ? 'style="border-color:' + TEAM_COLORS[i] + '"' : ''}">
+          <div class="card final-score-card" style="border-color:${winnerIndexes.has(i) ? TEAM_COLORS[i] : 'var(--border)'}">
             <div class="final-score-num" style="color:${TEAM_COLORS[i]}">${t.score}</div>
             <div class="final-score-name">${_esc(t.name)}</div>
           </div>

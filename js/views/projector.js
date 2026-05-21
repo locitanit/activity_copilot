@@ -148,23 +148,22 @@ function _renderBriefing(el, game) {
 
 // ── Győztes nézet ─────────────────────────────────────────────
 function _renderFinished(el, game) {
-  const teams = game.teams || [];
-  const winner = teams.reduce(
-    (best, t) => (t.score >= best.score ? t : best),
-    teams[0] || { name: '–', score: 0 }
-  );
-  const winnerIdx = teams.indexOf(winner);
+  const teams      = game.teams || [];
+  const maxScore   = Math.max(...teams.map(t => t.score), 0);
+  const winners    = teams.map((t, i) => ({ ...t, _idx: i })).filter(t => t.score === maxScore);
 
   el.innerHTML = `
     <div style="margin:auto;text-align:center;color:#fff;width:100%;max-width:900px">
       <div style="font-size:6rem;margin-bottom:1rem">🏆</div>
       <div style="font-size:1.2rem;color:#3d6a8a;margin-bottom:0.5rem;text-transform:uppercase;
-                  letter-spacing:0.15em">Győztes flotta</div>
-      <div style="font-size:4.5rem;font-weight:900;
-                  color:${TEAM_COLORS[winnerIdx] || '#fbbf24'};margin-bottom:2.5rem;
-                  text-shadow:0 0 50px ${TEAM_COLORS[winnerIdx] || '#fbbf24'}80">
-        ${_esc(winner.name)}
-      </div>
+                  letter-spacing:0.15em">${winners.length > 1 ? 'Győztes flották' : 'Győztes flotta'}</div>
+      ${winners.map(w => `
+        <div style="font-size:4.5rem;font-weight:900;
+                    color:${TEAM_COLORS[w._idx] || '#fbbf24'};margin-bottom:${winners.length > 1 ? '0.5rem' : '2.5rem'};
+                    text-shadow:0 0 50px ${TEAM_COLORS[w._idx] || '#fbbf24'}80">
+          ${_esc(w.name)}
+        </div>`).join('')}
+      <div style="margin-bottom:2rem"></div>
       <div style="display:flex;gap:1.5rem;justify-content:center;flex-wrap:wrap">
         ${teams.map((t, i) => `
           <div style="background:var(--surface);border:2px solid ${TEAM_COLORS[i]};
