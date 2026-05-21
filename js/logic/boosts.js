@@ -11,7 +11,7 @@ export const BOOST_TYPES = {
   torpedo: {
     id:    'torpedo',
     name:  'Foton torpedó',
-    emoji: '🚀',
+    emoji: '💥',
     description: 'Támadó fegyver. Célpont csapat: 30%: -1, 15%: -2, 5%: -3 fényév. 50% nem talál.',
     playerActivated: true,
   },
