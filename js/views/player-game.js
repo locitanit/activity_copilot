@@ -12,6 +12,7 @@ import { activateTorpedo, activateTrap, activateHyperdrive, activateTimeDilation
 const TEAM_COLORS = ['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899'];
 
 let _timerInterval = null;
+let _detailsOpen = false;
 
 export function renderPlayerGame(game, appState) {
   if (_timerInterval) { clearInterval(_timerInterval); _timerInterval = null; }
@@ -174,6 +175,75 @@ export function renderPlayerGame(game, appState) {
              </div>`
       }
 
+      <!-- Fejlesztések (Boost) – mindig látható -->
+      ${(() => {
+        const inv = myTeam?.inventory || [];
+        const canActivate = isActive && !currentTurn.wordRevealed && !timerHasValue;
+        return `
+          <div class="card" style="width:100%">
+            <h3 style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;
+                       letter-spacing:0.08em;margin-bottom:0.6rem">Flotta arzenál</h3>
+            <div class="boost-inventory" style="flex-direction:column;align-items:flex-start">
+              ${inv.length === 0
+                ? '<span style="font-size:0.82rem;color:var(--text-muted)">Nincs fejlesztés</span>'
+                : inv.map((bid, bidx) => {
+                    const bt = BOOST_TYPES[bid] || { emoji: '?', name: bid };
+                    if (!canActivate || bid === 'shield') {
+                      return `<span class="boost-chip boost-chip--${bid}" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>`;
+                    }
+                    if (bid === 'trap') {
+                      const boardLen = game.settings?.boardLength || 30;
+                      return `<div class="boost-activate-row">
+                        <span class="boost-chip boost-chip--trap" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
+                        <input type="number" min="0" max="${boardLen}" placeholder="Mező #"
+                               class="trap-cell-input">
+                        <button class="btn btn-warning trap-place-btn"
+                                style="font-size:0.82rem;padding:.35rem .75rem"
+                                data-bidx="${bidx}">🕳️ Lerakás</button>
+                      </div>`;
+                    }
+                    if (bid === 'torpedo') {
+                      return `<div class="boost-activate-row">
+                        <span class="boost-chip boost-chip--torpedo" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
+                        <select class="torpedo-target-sel" data-bidx="${bidx}">
+                          ${teams.map((t, ti) => ti === myTeamIdx ? '' :
+                            `<option value="${ti}">${_esc(t.name)}</option>`).join('')}
+                        </select>
+                        <button class="btn btn-danger torpedo-fire-btn"
+                                style="font-size:0.82rem;padding:.35rem .75rem"
+                                data-bidx="${bidx}">🚀 Tüzelés</button>
+                      </div>`;
+                    }
+                    if (bid === 'warp') {
+                      return `<div class="boost-activate-row">
+                        <span class="boost-chip boost-chip--warp" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
+                        <button class="btn btn-primary warp-btn"
+                                style="font-size:0.82rem;padding:.35rem .75rem"
+                                data-bidx="${bidx}">⚡ Aktiválás</button>
+                      </div>`;
+                    }
+                    if (bid === 'timewarp') {
+                      return `<div class="boost-activate-row">
+                        <span class="boost-chip boost-chip--timewarp" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
+                        <button class="btn btn-primary timewarp-btn"
+                                style="font-size:0.82rem;padding:.35rem .75rem"
+                                data-bidx="${bidx}">⏳ Aktiválás</button>
+                      </div>`;
+                    }
+                    return '';
+                  }).join('')
+              }
+            </div>
+          </div>`;
+      })()}
+
+      <!-- Részletes nézet panel -->
+      <div class="details-panel">
+      <button class="details-toggle-btn" id="pg-details-toggle">🔽 Részletes nézet</button>
+
+      <!-- Részletes szekció: timer + csillagtérkép -->
+      <div id="pg-details-section" ${_detailsOpen ? '' : 'hidden'} class="details-section">
+
       <!-- Timer -->
       <div class="card text-center" style="width:100%;padding:1.25rem">
         <div id="pg-timer" class="host-timer-display ${phaseInfo.colorClass}">
@@ -183,65 +253,6 @@ export function renderPlayerGame(game, appState) {
           ${timerStartedAt ? phaseInfo.label : (timerHasValue ? 'Adatátvitel szüneteltetve' : 'Adatátvitel még nem indult')}
         </div>
       </div>
-      <!-- Fejlesztések (Boost) -->
-      ${(() => {
-        const inv = myTeam?.inventory || [];
-        if (inv.length === 0) return '';
-        const canActivate = isActive && !currentTurn.wordRevealed && !timerHasValue;
-        return `
-          <div class="card" style="width:100%">
-            <h3 style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;
-                       letter-spacing:0.08em;margin-bottom:0.6rem">Flotta arzenál</h3>
-            <div class="boost-inventory" style="flex-direction:column;align-items:flex-start">
-              ${inv.map((bid, bidx) => {
-                const bt = BOOST_TYPES[bid] || { emoji: '?', name: bid };
-                if (!canActivate || bid === 'shield') {
-                  return `<span class="boost-chip boost-chip--${bid}" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>`;
-                }
-                if (bid === 'trap') {
-                  const boardLen = game.settings?.boardLength || 30;
-                  return `<div class="boost-activate-row">
-                    <span class="boost-chip boost-chip--trap" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
-                    <input type="number" min="0" max="${boardLen}" placeholder="Mező #"
-                           class="trap-cell-input">
-                    <button class="btn btn-warning trap-place-btn"
-                            style="font-size:0.82rem;padding:.35rem .75rem"
-                            data-bidx="${bidx}">🕳️ Lerakás</button>
-                  </div>`;
-                }
-                if (bid === 'torpedo') {
-                  return `<div class="boost-activate-row">
-                    <span class="boost-chip boost-chip--torpedo" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
-                    <select class="torpedo-target-sel" data-bidx="${bidx}">
-                      ${teams.map((t, ti) => ti === myTeamIdx ? '' :
-                        `<option value="${ti}">${_esc(t.name)}</option>`).join('')}
-                    </select>
-                    <button class="btn btn-danger torpedo-fire-btn"
-                            style="font-size:0.82rem;padding:.35rem .75rem"
-                            data-bidx="${bidx}">🚀 Tüzelés</button>
-                  </div>`;
-                }
-                if (bid === 'warp') {
-                  return `<div class="boost-activate-row">
-                    <span class="boost-chip boost-chip--warp" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
-                    <button class="btn btn-primary warp-btn"
-                            style="font-size:0.82rem;padding:.35rem .75rem"
-                            data-bidx="${bidx}">⚡ Aktiválás</button>
-                  </div>`;
-                }
-                if (bid === 'timewarp') {
-                  return `<div class="boost-activate-row">
-                    <span class="boost-chip boost-chip--timewarp" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
-                    <button class="btn btn-primary timewarp-btn"
-                            style="font-size:0.82rem;padding:.35rem .75rem"
-                            data-bidx="${bidx}">⏳ Aktiválás</button>
-                  </div>`;
-                }
-                return '';
-              }).join('')}
-            </div>
-          </div>`;
-      })()}
       <!-- Táblaállás (kompakt) -->
       <div class="card" style="width:100%">
         <h3 style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;
@@ -264,8 +275,30 @@ export function renderPlayerGame(game, appState) {
         }).join('')}
       </div>
 
+      </div><!-- /pg-details-section -->
+      </div><!-- /details-panel -->
+
     </div>
   `;
+  // ── Részletes nézet toggle ───────────────────────────────────
+  {
+    const btn = document.getElementById('pg-details-toggle');
+    if (btn) btn.textContent = _detailsOpen ? '🔼 Részletes nézet elrejtése' : '🔽 Részletes nézet';
+  }
+  document.getElementById('pg-details-toggle')?.addEventListener('click', () => {
+    const section = document.getElementById('pg-details-section');
+    const btn = document.getElementById('pg-details-toggle');
+    if (!section || !btn) return;
+    _detailsOpen = !_detailsOpen;
+    if (_detailsOpen) {
+      section.removeAttribute('hidden');
+      btn.textContent = '🔼 Részletes nézet elrejtése';
+    } else {
+      section.setAttribute('hidden', '');
+      btn.textContent = '🔽 Részletes nézet';
+    }
+  });
+
   // ── Boost aktiválók ─────────────────────────────────────────
   const _allBoostBtns = () => document.querySelectorAll('.torpedo-fire-btn,.warp-btn,.timewarp-btn,.trap-place-btn');
 

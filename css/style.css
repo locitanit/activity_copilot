@@ -792,6 +792,50 @@ input:focus, select:focus {
 .proj-menu-item:hover { background: rgba(0,212,255,0.1); color: var(--primary); }
 .proj-menu-item + .proj-menu-item { border-top: 1px solid rgba(0,212,255,0.1); }
 
+/* Részletes nézet toggle */
+/* Részletes nézet panel */
+.details-panel {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid rgba(0, 212, 255, 0.18);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(0,212,255,0.04);
+}
+.details-toggle-btn {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--text-muted);
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  font-family: 'Exo 2', sans-serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-align: center;
+  transition: background 0.2s, color 0.2s;
+}
+.details-toggle-btn:hover { background: rgba(0,212,255,0.06); color: var(--text); }
+.details-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  border-top: 1px solid var(--border);
+}
+.details-section > * {
+  border-radius: 0 !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+.details-section > *:last-child {
+  border-bottom: none !important;
+}
+.details-section[hidden] { display: none; }
+
 /* ============================================================
    VIEW 4/A – PROJECTOR
    ============================================================ */

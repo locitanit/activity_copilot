@@ -19,6 +19,7 @@ const TEAM_COLORS = ['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899'
 
 // Modul-szintű interval – elkerüli a dupla tickeket re-render esetén
 let _timerInterval = null;
+let _detailsOpen = false;
 
 export function renderHostGame(game, appState) {
   // Minden re-rendernél töröljük az előző intervalt
@@ -320,10 +321,38 @@ export function renderHostGame(game, appState) {
             </div>
           </div>
 
+          <!-- Flotta arzenálok – pontozás alatt -->
+          <div class="card dashboard-section">
+            <h3>Flotta arzenálok</h3>
+            ${teams.map((t, i) => {
+              const inv = t.inventory || [];
+              return `
+                <div style="margin-bottom:0.6rem">
+                  <span style="font-weight:600;color:${TEAM_COLORS[i]};font-size:0.88rem">${_esc(t.name)}</span>
+                  <div class="boost-inventory">
+                    ${inv.length === 0
+                      ? '<span style="font-size:0.78rem;color:var(--text-muted)">Nincs fejlesztés</span>'
+                      : inv.map((bid, bidx) => {
+                          const bt = BOOST_TYPES[bid] || { emoji: '?', name: bid };
+                          return `<span class="boost-chip boost-chip--${bid}" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>`;
+                        }).join('')
+                    }
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>
+
         </div><!-- /host-main -->
 
         <!-- ── JOBB OLDALSÁV ─────────────────────────────────── -->
         <div class="host-sidebar">
+
+          <!-- Részletes nézet panel -->
+          <div class="details-panel">
+          <button class="details-toggle-btn" id="host-details-toggle">🔽 Részletes nézet</button>
+
+          <!-- Részletes szekció -->
+          <div id="host-details-section" ${_detailsOpen ? '' : 'hidden'} class="details-section">
 
           <!-- Csillagtérkép állása -->
           <div class="card dashboard-section">
@@ -352,26 +381,6 @@ export function renderHostGame(game, appState) {
           </div>
 
           <!-- Fejlesztések (Boost) szekció -->
-          <div class="card dashboard-section">
-            <h3>Flotta arzenálok</h3>
-            ${teams.map((t, i) => {
-              const inv = t.inventory || [];
-              const boardLen = game.settings?.boardLength || 30;
-              return `
-                <div style="margin-bottom:0.6rem">
-                  <span style="font-weight:600;color:${TEAM_COLORS[i]};font-size:0.88rem">${_esc(t.name)}</span>
-                  <div class="boost-inventory">
-                    ${inv.length === 0
-                      ? '<span style="font-size:0.78rem;color:var(--text-muted)">Nincs fejlesztés</span>'
-                      : inv.map((bid, bidx) => {
-                          const bt = BOOST_TYPES[bid] || { emoji: '?', name: bid };
-                          return `<span class="boost-chip boost-chip--${bid}" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>`;
-                        }).join('')
-                    }
-                  </div>
-                </div>`;
-            }).join('')}
-          </div>
 
           <!-- Következő küldetések -->
           <div class="card dashboard-section">
@@ -408,12 +417,33 @@ export function renderHostGame(game, appState) {
             </div>
           </div>
 
+          </div><!-- /host-details-section -->
+          </div><!-- /details-panel -->
+
         </div><!-- /host-sidebar -->
       </div>
     </div>
   `;
 
   // ── Event listeners ──────────────────────────────────────────
+
+  {
+    const btn = document.getElementById('host-details-toggle');
+    if (btn) btn.textContent = _detailsOpen ? '🔼 Részletes nézet elrejtése' : '🔽 Részletes nézet';
+  }
+  document.getElementById('host-details-toggle')?.addEventListener('click', () => {
+    const section = document.getElementById('host-details-section');
+    const btn = document.getElementById('host-details-toggle');
+    if (!section || !btn) return;
+    _detailsOpen = !_detailsOpen;
+    if (_detailsOpen) {
+      section.removeAttribute('hidden');
+      btn.textContent = '🔼 Részletes nézet elrejtése';
+    } else {
+      section.setAttribute('hidden', '');
+      btn.textContent = '🔽 Részletes nézet';
+    }
+  });
 
   {
     const projUrl = () => new URL(
