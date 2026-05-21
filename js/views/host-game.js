@@ -112,7 +112,7 @@ export function renderHostGame(game, appState) {
             Irányítóközpont Státusz
           </h3>
           <p style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem">
-            Asztronáuták a pályán: <span style="color:var(--primary);font-family:'Orbitron',monospace">${playerCount}</span>
+            Asztronauták a pályán: <span style="color:var(--primary);font-family:'Orbitron',monospace">${playerCount}</span>
           </p>
           ${teams.map((t, i) => {
             const count = Object.values(players).filter(p => p.teamIndex === i).length;
@@ -125,7 +125,7 @@ export function renderHostGame(game, appState) {
             <button class="btn btn-success btn-lg btn-full" id="btn-launch-game"
               ${canLaunch ? '' : 'disabled'}
               style="font-size:1.2rem;padding:1rem 2rem">
-              🚀 Első kör indítása – Misszió GO!
+              🚀 Első kör indítása
             </button>
           </div>
           ${!canLaunch
@@ -133,7 +133,7 @@ export function renderHostGame(game, appState) {
                  Várj, amíg minden diák belép a játékba!
                </p>`
             : `<p style="font-size:0.82rem;margin-top:0.6rem;color:var(--success)">
-                 ✅ Minden asztronáuta a fedélzeten! Indíthatod az első kört.
+                 ✅ Minden asztronauta a fedélzeten! Indíthatod az első kört.
                </p>`}
         </div>
       </div>
@@ -146,7 +146,7 @@ export function renderHostGame(game, appState) {
         await updateGameData(appState.gameCode, { status: 'playing' });
       } catch (err) {
         showToast('❌ Hiba: ' + err.message);
-        if (btn) { btn.disabled = false; btn.textContent = '🚀 Első kör indítása – Misszió GO!'; }
+        if (btn) { btn.disabled = false; btn.textContent = '🚀 Első kör indítása'; }
       }
     });
 
@@ -236,7 +236,7 @@ export function renderHostGame(game, appState) {
                   👁 Adatcsomag felfedése az asztronautának
                 </button>
                 <span style="font-size:0.78rem;color:var(--text-muted)">
-                  Az asztronáuta még nem látja az adatcsomagot
+                  Az asztronauta még nem látja az adatcsomagot
                 </span>` : ''}
               <button class="btn btn-secondary" id="btn-reroll">
                 🔀 Adatcsomag újrasorsolása

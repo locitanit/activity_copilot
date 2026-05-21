@@ -36,14 +36,14 @@ function _renderHostLobby(el, game, playerEntries, teams, appState) {
   el.innerHTML = `
     <div class="lobby-container">
       <p class="text-muted text-center" style="margin-bottom:0.5rem;font-size:0.9rem">
-        Oszd meg ezt a misszió-kódot az asztronáutákkal:
+        Oszd meg ezt a misszió-kódot az asztronautákkal:
       </p>
       <div class="join-code-display">${appState.gameCode}</div>
 
       <div class="card" style="margin-bottom:1.25rem">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
           <h3 style="font-size:1rem;font-weight:600">
-            Regisztrált asztronáuták
+            Regisztrált asztronauták
             <span style="color:var(--text-muted);font-weight:400">(${playerEntries.length})</span>
           </h3>
           <span style="font-size:0.82rem;color:var(--text-muted)">
@@ -52,7 +52,7 @@ function _renderHostLobby(el, game, playerEntries, teams, appState) {
         </div>
 
         ${playerEntries.length === 0
-          ? `<p class="text-muted" style="font-size:0.9rem">Még egyetlen asztronáuta sem érkezett...</p>`
+          ? `<p class="text-muted" style="font-size:0.9rem">Még egyetlen asztronauta sem érkezett...</p>`
           : `<div class="players-grid">
                ${teams.map((team, idx) => {
                   const teamPlayers = playerEntries.filter(([, p]) => p.teamIndex === idx);
@@ -64,7 +64,7 @@ function _renderHostLobby(el, game, playerEntries, teams, appState) {
                       </h3>
                       <div class="player-list">
                         ${teamPlayers.length === 0
-                          ? `<p class="text-muted" style="font-size:0.82rem">Nincs asztronáuta</p>`
+                          ? `<p class="text-muted" style="font-size:0.82rem">Nincs asztronauta</p>`
                           : teamPlayers.map(([id, p]) => `
                               <div class="player-chip">
                                 <span>👤</span> ${_esc(p.name)}
@@ -104,8 +104,8 @@ function _renderHostLobby(el, game, playerEntries, teams, appState) {
       ${!canStart
         ? `<p class="text-muted text-center mt-1" style="font-size:0.85rem">
              ${ playerEntries.length === 0
-               ? 'Legalább 1 asztronáuta szükséges'
-               : 'Minden asztronáutának flottában kell lennie (kézi mód)'}
+               ? 'Legalább 1 asztronauta szükséges'
+               : 'Minden asztronautának flottában kell lennie (kézi mód)'}
            </p>`
         : ''}
     </div>
@@ -150,7 +150,7 @@ async function _handleStartGame(game, playerEntries, appState) {
     // Kézi mód: ellenőrzés – mindenki csapatban van-e?
     const unassigned = playerEntries.filter(([, p]) => p.teamIndex < 0);
     if (unassigned.length > 0) {
-      showToast(`⚠️ ${unassigned.length} asztronáuta még nincs flottában!`);
+      showToast(`⚠️ ${unassigned.length} asztronauta még nincs flottában!`);
       return;
     }
   }
@@ -231,9 +231,9 @@ function _renderPlayerLobby(el, game, playerEntries, teams, appState) {
                <p style="font-size:1.5rem;font-weight:700;color:${TEAM_COLORS_HEX[myTeamIdx]}">${_esc(myTeam.name)}</p>
                ${teammates.length > 0
                  ? `<p class="text-muted mt-1" style="font-size:0.85rem">
-                      Flottábeli asztronáuták: ${teammates.map(([, p]) => _esc(p.name)).join(', ')}
+                      Flottábeli asztronauták: ${teammates.map(([, p]) => _esc(p.name)).join(', ')}
                     </p>`
-                 : `<p class="text-muted mt-1" style="font-size:0.82rem">Egyedüli asztronáuta a flottában</p>`}
+                 : `<p class="text-muted mt-1" style="font-size:0.82rem">Egyedüli asztronauta a flottában</p>`}
              </div>`
           : `<div class="card" style="margin-bottom:1rem">
                <p class="text-muted">Flottabeosztás folyamatban...</p>

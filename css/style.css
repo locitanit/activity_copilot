@@ -31,7 +31,7 @@
 
 html, body {
   height: 100%;
-  font-family: 'Rajdhani', 'Segoe UI', system-ui, sans-serif;
+  font-family: 'Exo 2', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.5;
@@ -45,7 +45,7 @@ h1, h2, h3,
 .score-badge,
 .final-score-num,
 .winner-team-name {
-  font-family: 'Orbitron', 'Rajdhani', system-ui, sans-serif;
+  font-family: 'Exo 2', system-ui, sans-serif;
 }
 
 /* ── Splash Screen ─────────────────────────────────────────── */
@@ -116,7 +116,7 @@ h1, h2, h3,
   cursor: pointer;
   font-size: 1rem;
   font-weight: 700;
-  font-family: 'Rajdhani', system-ui, sans-serif;
+  font-family: 'Exo 2', system-ui, sans-serif;
   letter-spacing: 0.06em;
   transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
   white-space: nowrap;
@@ -162,7 +162,7 @@ select {
   color: var(--text);
   padding: 0.6rem 0.9rem;
   font-size: 1rem;
-  font-family: 'Rajdhani', system-ui, sans-serif;
+  font-family: 'Exo 2', system-ui, sans-serif;
   width: 100%;
   transition: outline 0.15s, box-shadow 0.15s;
 }
@@ -511,7 +511,7 @@ input:focus, select:focus {
   color: var(--primary);
   min-width: 2.2rem;
   text-align: right;
-  font-family: 'Orbitron', monospace;
+  font-family: 'Exo 2', sans-serif;
   text-shadow: 0 0 8px rgba(0,212,255,0.4);
 }
 
@@ -716,7 +716,7 @@ input:focus, select:focus {
   color: rgba(0,212,255,0.3);
   line-height: 1;
   user-select: none;
-  font-family: 'Orbitron', monospace;
+  font-family: 'Exo 2', sans-serif;
 }
 
 .snake-cell-start .snake-num,
@@ -727,7 +727,7 @@ input:focus, select:focus {
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
-  font-family: 'Orbitron', monospace;
+  font-family: 'Exo 2', sans-serif;
   user-select: none;
   letter-spacing: 0.03em;
 }
@@ -759,7 +759,7 @@ input:focus, select:focus {
   text-shadow: 0 1px 3px rgba(0,0,0,0.8);
   transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   box-shadow: 0 0 10px currentColor;
-  font-family: 'Orbitron', monospace;
+  font-family: 'Exo 2', sans-serif;
 }
 
 /* ── Kivetítő gomb dropdown ──────────────────────────────── */
@@ -907,7 +907,7 @@ input:focus, select:focus {
 
 /* Secret word card */
 .secret-word-card { text-align: center; padding: 1.75rem; }
-.secret-word-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-muted); margin-bottom: 0.4rem; font-family: 'Orbitron', monospace; }
+.secret-word-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-muted); margin-bottom: 0.4rem; font-family: 'Exo 2', sans-serif; }
 .secret-word  { font-size: 2.6rem; font-weight: 900; color: var(--warning); text-shadow: 0 0 20px rgba(255,214,0,0.4); word-break: break-word; }
 .task-meta    { display: flex; gap: 1.25rem; justify-content: center; margin-top: 0.75rem; font-size: 0.9rem; color: var(--text-muted); }
 .task-meta span { display: flex; align-items: center; gap: 0.3rem; }
@@ -936,7 +936,7 @@ input:focus, select:focus {
   letter-spacing: 0.1em;
   color: var(--text-muted);
   margin-bottom: 0.75rem;
-  font-family: 'Orbitron', monospace;
+  font-family: 'Exo 2', sans-serif;
 }
 .scoring-btns { display: flex; flex-direction: column; gap: 0.45rem; }
 
@@ -948,7 +948,7 @@ input:focus, select:focus {
   letter-spacing: 0.1em;
   color: var(--text-muted);
   margin-bottom: 0.65rem;
-  font-family: 'Orbitron', monospace;
+  font-family: 'Exo 2', sans-serif;
 }
 
 .upcoming-list { display: flex; flex-direction: column; gap: 0.4rem; }
@@ -1006,7 +1006,7 @@ input:focus, select:focus {
   font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  font-family: 'Orbitron', monospace;
+  font-family: 'Exo 2', sans-serif;
 }
 .player-role-badge.active  { background: rgba(0,212,255,0.15); color: var(--primary);  border: 1px solid rgba(0,212,255,0.5); box-shadow: 0 0 12px rgba(0,212,255,0.2); }
 .player-role-badge.guesser { background: rgba(0,230,118,0.12); color: var(--success); border: 1px solid rgba(0,230,118,0.4); box-shadow: 0 0 12px rgba(0,230,118,0.15); }
@@ -1095,7 +1095,7 @@ input:focus, select:focus {
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-weight: 700;
-  font-family: 'Rajdhani', system-ui, sans-serif;
+  font-family: 'Exo 2', system-ui, sans-serif;
   letter-spacing: 0.05em;
   animation: pulse-reveal 1.8s ease-in-out infinite;
   transition: opacity 0.15s;
@@ -1280,7 +1280,7 @@ input:focus, select:focus {
 }
 
 .briefing-line {
-  font-family: 'Orbitron', 'Rajdhani', monospace;
+  font-family: 'Exo 2', monospace;
   font-size: 0.72rem;
   font-weight: 600;
   color: rgba(0, 200, 255, 0.7);
@@ -1304,7 +1304,7 @@ input:focus, select:focus {
 
 /* Main title */
 .briefing-title {
-  font-family: 'Orbitron', sans-serif !important;
+  font-family: 'Exo 2', sans-serif !important;
   font-size: 1.8rem;
   font-weight: 900;
   color: #4de8ff;
@@ -1367,7 +1367,7 @@ input:focus, select:focus {
 }
 
 .briefing-rules-title {
-  font-family: 'Orbitron', sans-serif !important;
+  font-family: 'Exo 2', sans-serif !important;
   font-size: 0.85rem;
   font-weight: 700;
   color: #4de8ff;
@@ -1398,7 +1398,7 @@ input:focus, select:focus {
   border-radius: 50%;
   background: rgba(0, 180, 255, 0.15);
   border: 1px solid rgba(0, 180, 255, 0.4);
-  font-family: 'Orbitron', monospace;
+  font-family: 'Exo 2', sans-serif;
   font-size: 0.75rem;
   font-weight: 700;
   color: #4de8ff;
@@ -1625,7 +1625,7 @@ input:focus, select:focus {
 .boost-log-entry {
   font-size: .75rem;
   color: var(--text-muted);
-  font-family: 'Orbitron', monospace;
+  font-family: 'Exo 2', sans-serif;
   letter-spacing: .02em;
   animation: boost-entry-in .4s ease;
 }
