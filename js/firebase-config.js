@@ -99,9 +99,16 @@ export async function joinGame(code, playerName) {
   const game = snap.val();
   if (game.status === 'finished') throw new Error('Ez a játék már véget ért.');
 
+  const trimmedName = playerName.trim();
+  const existingPlayers = game.players ? Object.values(game.players) : [];
+  const nameTaken = existingPlayers.some(
+    p => p.name.trim().toLowerCase() === trimmedName.toLowerCase()
+  );
+  if (nameTaken) throw new Error('Ez a név már foglalt ebben a játékban!');
+
   const newRef = push(ref(db, `games/${code}/players`));
   await set(newRef, {
-    name:      playerName.trim(),
+    name:      trimmedName,
     teamIndex: -1,   // -1 = még nem osztottak csapatba
     turnCount: 0,
   });

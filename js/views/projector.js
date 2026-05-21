@@ -139,7 +139,7 @@ function _renderBriefing(el, game) {
             <span class="briefing-line">&gt;&gt;&gt; ÜZENET VÉGE &lt;&lt;&lt;</span>
           </div>
 
-          <p class="briefing-waiting">🛸 Várakozás az Irányítóközpont parancsára...</p>
+          <p class="briefing-waiting">Várakozás az Irányítóközpont parancsára...</p>
         </div>
       </div>
     </div>

@@ -81,7 +81,7 @@ function _renderHostLobby(el, game, playerEntries, teams, appState) {
                   if (unassigned.length === 0) return '';
                   return `
                     <div class="team-column">
-                      <h3 style="color:var(--text-muted)">🛸 Besorolatlan</h3>
+                      <h3 style="color:var(--text-muted)">Besorolatlan</h3>
                       <div class="player-list">
                         ${unassigned.map(([, p]) => `
                           <div class="player-chip">
@@ -240,7 +240,7 @@ function _renderPlayerLobby(el, game, playerEntries, teams, appState) {
              </div>`
       }
 
-      <p class="lobby-status">🛸 Várakozás az Irányítóközpontra...</p>
+      <p class="lobby-status">Várakozás az Irányítóközpontra...</p>
     </div>
   `;
 
