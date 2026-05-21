@@ -613,13 +613,13 @@ input:focus, select:focus {
    SNAKE BOARD (projector)
    ============================================================ */
 .projector-sidebar {
-  width: 600px;
+  width: clamp(200px, 22vw, 300px);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2rem;
+  gap: 1rem;
   text-align: center;
   padding: 0 1rem;
 }
@@ -635,7 +635,6 @@ input:focus, select:focus {
   flex: 1;
   min-height: 0;
   max-height: 92vh;
-  max-width: 42vw;
   width: 100%;
   overflow: hidden;
   box-shadow: 0 0 40px rgba(0,212,255,0.08), inset 0 0 60px rgba(0,0,30,0.6);
@@ -692,14 +691,15 @@ input:focus, select:focus {
 .snake-cell-ghost { flex: 1; min-width: 0; min-height: 0; }
 
 .snake-cell-start {
-  background: rgba(0,230,118,0.08);
-  border-color: rgba(0,230,118,0.5);
-  box-shadow: inset 0 0 10px rgba(0,230,118,0.1);
+  background: rgba(0,230,118,0.12);
+  border: 2px solid rgba(0,230,118,0.7);
+  box-shadow: inset 0 0 16px rgba(0,230,118,0.12), 0 0 10px rgba(0,230,118,0.25);
 }
 
 .snake-cell-end {
-  background: rgba(255,214,0,0.08);
-  border-color: rgba(255,214,0,0.5);
+  background: rgba(255,214,0,0.12);
+  border: 2px solid rgba(255,214,0,0.75);
+  box-shadow: 0 0 12px rgba(255,214,0,0.25);
   animation: pulse-board-end 2.2s ease-in-out infinite;
 }
 
@@ -720,14 +720,29 @@ input:focus, select:focus {
 }
 
 .snake-cell-start .snake-num,
-.snake-cell-end .snake-num { font-size: clamp(0.8rem, 1.6vw, 1.2rem); color: inherit; }
+.snake-cell-end .snake-num { font-size: clamp(1rem, 2vw, 1.5rem); color: inherit; }
+
+.snake-label {
+  font-size: clamp(0.45rem, 0.85vw, 0.68rem);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  font-family: 'Orbitron', monospace;
+  user-select: none;
+  letter-spacing: 0.03em;
+}
+.snake-cell-start .snake-label { color: rgba(0,230,118,0.95); }
+.snake-cell-end .snake-label   { color: rgba(255,214,0,0.95); }
 
 .snake-tokens {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 2px;
   justify-content: center;
   align-items: center;
+  z-index: 1;
 }
 
 .snake-token {
@@ -767,12 +782,23 @@ input:focus, select:focus {
   text-shadow: 0 1px 4px rgba(0,0,0,0.6);
 }
 
-/* .projector-main replaced by .projector-sidebar + inline flex wrapper */
+/* .projector-main replaced by .projector-sidebar + .proj-main-area */
+
+/* Projector main flex area */
+.proj-main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
+  min-height: 0;
+  width: 100%;
+  overflow: visible;
+}
 
 /* Timer */
 .timer-block { text-align: center; }
 .timer-display {
-  font-size: 8rem;
+  font-size: clamp(2rem, 6vw, 5rem);
   font-weight: 900;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -812,18 +838,18 @@ input:focus, select:focus {
 
 /* Turn info on projector */
 .turn-info { text-align: center; }
-.turn-team   { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; letter-spacing: 0.08em; }
+.turn-team   { font-size: clamp(0.95rem, 2vw, 1.8rem); font-weight: 700; margin-bottom: 0.25rem; letter-spacing: 0.08em; }
 .turn-player { font-size: 1rem; color: var(--text-muted); margin-bottom: 1rem; }
 .task-type-badge {
   display: inline-block;
-  font-size: 1.8rem;
+  font-size: clamp(0.85rem, 1.8vw, 1.6rem);
   font-weight: 800;
-  padding: 0.6rem 1.4rem;
+  padding: clamp(0.3rem, 0.7vw, 0.6rem) clamp(0.6rem, 1.2vw, 1.4rem);
   border-radius: 10px;
   background: var(--surface);
   margin-bottom: 0.4rem;
 }
-.task-points { font-size: 1.2rem; color: var(--text-muted); }
+.task-points { font-size: clamp(0.75rem, 1.2vw, 1.05rem); color: var(--text-muted); }
 
 /* ============================================================
    VIEW 4/B – HOST GAME CONTROLLER
@@ -1097,13 +1123,31 @@ input:focus, select:focus {
   .host-sidebar { max-height: none; }
 }
 
+/* ── Projector responsive: panel → horizontal strip ────── */
+@media (max-width: 950px) {
+  .proj-main-area {
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .projector-sidebar {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.3rem 0.75rem;
+  }
+  .timer-block { display: flex; align-items: center; gap: 0.6rem; }
+  .turn-info   { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; justify-content: center; }
+  .boost-log-strip { display: none; }
+  .snake-board { max-height: calc(100vh - 190px); }
+}
+
 @media (max-width: 600px) {
   .view.active          { padding: 1.25rem; }
   #view-landing h1      { font-size: 2rem; }
   .join-code-display    { font-size: 2.5rem; letter-spacing: 0.4rem; }
-  .timer-display        { font-size: 5rem; }
-  .projector-sidebar    { width: 100%; flex-direction: row; flex-wrap: wrap; justify-content: center; }
-  .task-type-badge      { font-size: 1.4rem; }
   .setup-actions        { flex-direction: column; }
 }
 

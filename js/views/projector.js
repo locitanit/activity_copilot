@@ -217,7 +217,7 @@ function _renderPlaying(el, game) {
       ).join('')}
     </div>` : ''}
     <!-- ── Fő terület: bal sáv + kígyótábla ─────────────── -->
-    <div style="flex:1;display:flex;gap:1.5rem;min-height:0;width:100%;overflow:visible">
+    <div class="proj-main-area">
 
       <!-- Bal oldal: timer + kör info -->
       <div class="projector-sidebar">
@@ -245,7 +245,7 @@ function _renderPlaying(el, game) {
                </div>
                <div class="task-points">⭐ ${currentTurn.points ?? '–'} fényév</div>`
             : currentTurn.word && !currentTurn.wordRevealed
-              ? '<div class="projector-prepare-badge">🚀 Adatcsomag betöltése...</div>'
+              ? '<div class="projector-prepare-badge">Adatcsomag betöltése...</div>'
               : '<div class="task-points" style="color:#444">Kör hamarosan indul...</div>'
           }
         </div>
@@ -292,16 +292,18 @@ function _renderSnakeBoard(teams, boardLength, traps = {}) {
   else if (boardLength <= 49) cols = 7;
   else                        cols = 8;
 
-  // Csapatok mezőre leképezése: cellNum (1-indexed) → [teamIdx, ...]
+  // Csapatok mezőre leképezése: cellNum (0-indexed) → [teamIdx, ...]
   const teamAt = {};
   teams.forEach((t, i) => {
-    const cellNum = Math.min(Math.max(t.score, 0), boardLength - 1) + 1;
+    const cellNum = Math.min(Math.max(t.score, 0), boardLength);
     if (!teamAt[cellNum]) teamAt[cellNum] = [];
     teamAt[cellNum].push(i);
   });
 
-  const totalRows = Math.ceil(boardLength / cols);
+  const totalRows = Math.ceil((boardLength + 1) / cols);
   let html = '<div class="snake-board">';
+
+  const ghostsInLastRow = totalRows * cols - (boardLength + 1);
 
   // Sorok felülről lefelé (legfelső sor = legmagasabb cellaszámok)
   for (let d = 0; d < totalRows; d++) {
@@ -323,14 +325,14 @@ function _renderSnakeBoard(teams, boardLength, traps = {}) {
     for (let c = 0; c < cols; c++) {
       // Páros sor (0, 2...): bal→jobb; páratlan (1, 3...): jobb→bal
       const cellIdx = r % 2 === 0 ? r * cols + c : r * cols + (cols - 1 - c);
-      const cellNum = cellIdx + 1;
+      const cellNum = cellIdx;
 
       if (cellNum > boardLength) {
-        html += '<div class="snake-cell snake-cell-ghost"></div>';
+        // Ghost cellák kihagyva – a célmező kitölti helyüket
         continue;
       }
 
-      const isStart = cellNum === 1;
+      const isStart = cellNum === 0;
       const isEnd   = cellNum === boardLength;
       const tokens  = teamAt[cellNum] || [];
       let cls = 'snake-cell';
@@ -338,9 +340,20 @@ function _renderSnakeBoard(teams, boardLength, traps = {}) {
       else if (isEnd)    cls += ' snake-cell-end';
       if (tokens.length) cls += ' has-token';
 
-      html += `<div class="${cls}">`;
+      // Célmező: flex-span a sor végéig
+      const flexStyle = isEnd && ghostsInLastRow > 0
+        ? ` style="flex:${ghostsInLastRow + 1}"`
+        : '';
+
+      html += `<div class="${cls}"${flexStyle}>`;
       if (traps[String(cellNum)] !== undefined) html += '<span class="trap-marker">🕳️</span>';
-      html += `<span class="snake-num">${isStart ? '🏁' : isEnd ? '🏆' : cellNum}</span>`;
+      if (isStart) {
+        html += `<span class="snake-num">🚀</span><span class="snake-label">START</span>`;
+      } else if (isEnd) {
+        html += `<span class="snake-num">⭐</span><span class="snake-label">Proxima<br>bázis</span>`;
+      } else {
+        html += `<span class="snake-num">${cellNum}</span>`;
+      }
       if (tokens.length) {
         html += '<div class="snake-tokens">';
         for (const ti of tokens) {

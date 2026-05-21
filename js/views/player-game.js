@@ -202,7 +202,7 @@ export function renderPlayerGame(game, appState) {
                   const boardLen = game.settings?.boardLength || 30;
                   return `<div class="boost-activate-row">
                     <span class="boost-chip boost-chip--trap" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
-                    <input type="number" min="1" max="${boardLen}" placeholder="Mező #"
+                    <input type="number" min="0" max="${boardLen}" placeholder="Mező #"
                            class="trap-cell-input">
                     <button class="btn btn-warning trap-place-btn"
                             style="font-size:0.82rem;padding:.35rem .75rem"
@@ -328,8 +328,8 @@ export function renderPlayerGame(game, appState) {
       const input = btn.closest('.boost-activate-row')?.querySelector('.trap-cell-input');
       const cellNum = parseInt(input?.value ?? '', 10);
       const boardLen = game.settings?.boardLength || 30;
-      if (!cellNum || cellNum < 1 || cellNum > boardLen) {
-        showToast('⚠️ Adj meg érvényes mezőszámot (1–' + boardLen + ')!');
+      if (isNaN(cellNum) || cellNum < 0 || cellNum > boardLen) {
+        showToast('⚠️ Adj meg érvényes mezőszámot (0–' + boardLen + ')!');
         return;
       }
       if (game.traps?.[String(cellNum)] !== undefined) {

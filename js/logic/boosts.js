@@ -242,7 +242,7 @@ export async function checkTraps(gameCode, game, teamIndex, newScore) {
   if (!team) return false;
 
   const boardLength = game.settings?.boardLength || 30;
-  const cellNum = Math.min(Math.max(newScore, 0), boardLength - 1) + 1;
+  const cellNum = Math.min(Math.max(newScore, 0), boardLength);
   const traps = game.traps || {};
 
   const hasTrap = traps[String(cellNum)] !== undefined;

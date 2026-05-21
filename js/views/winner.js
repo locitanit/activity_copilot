@@ -23,7 +23,7 @@ export function renderWinner(game, appState) {
   el.innerHTML = `
     <div class="winner-container">
       <div class="trophy">🏆</div>
-      <h1>Misszió lezárva!</h1>
+      <h1>Küldetés teljesítve!</h1>
       <p class="text-muted" style="margin-bottom:0.5rem">Győztes flotta</p>
       <div class="winner-team-name" style="color:${TEAM_COLORS[winner.index] ?? '#fbbf24'}">
         ${_esc(winner.name)}
