@@ -146,4 +146,9 @@ export async function getGame(code) {
   return snap.val();
 }
 
+/** Törli az összes játékot az adatbázisból. */
+export async function deleteAllGames() {
+  await set(ref(db, 'games'), null);
+}
+
 export { serverTimestamp };

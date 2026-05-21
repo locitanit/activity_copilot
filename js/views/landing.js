@@ -4,7 +4,7 @@
  */
 
 import { showView, showToast, state, startGameListener } from '../app.js';
-import { joinGame } from '../firebase-config.js';
+import { joinGame, deleteAllGames } from '../firebase-config.js';
 
 /** Inject randomly-placed star box-shadows on each visit */
 function _genStars() {
@@ -132,6 +132,18 @@ export function renderLanding() {
     const pos = e.target.selectionStart;
     e.target.value = e.target.value.toUpperCase();
     e.target.setSelectionRange(pos, pos);
+  });
+
+  // ── Rejtett admin funkció: állomásra kattintás ─────────────
+  el.querySelector('.obj-station').addEventListener('click', async () => {
+    const code = window.prompt('');
+    if (code !== 'XXX-RMG-XXX') return;
+    try {
+      await deleteAllGames();
+      showToast('Összes játék törölve.');
+    } catch (err) {
+      showToast('Hiba: ' + (err.message || 'ismeretlen'));
+    }
   });
 }
 

@@ -402,6 +402,8 @@ input:focus, select:focus {
 .obj-station {
   width: 200px; height: auto;
   bottom: 8%; left: 8%;
+  pointer-events: auto;
+  cursor: default;
   opacity: 0.75;
   animation: orbit-wobble 20s ease-in-out infinite;
   filter: drop-shadow(0 0 10px rgba(0,212,255,.45));
