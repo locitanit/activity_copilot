@@ -347,7 +347,7 @@ export function renderHostGame(game, appState) {
 
           <!-- Fejlesztések (Boost) szekció -->
           <div class="card dashboard-section">
-            <h3>Fejlesztések</h3>
+            <h3>Flotta arzenálok</h3>
             ${teams.map((t, i) => {
               const inv = t.inventory || [];
               const boardLen = game.settings?.boardLength || 30;
@@ -359,7 +359,7 @@ export function renderHostGame(game, appState) {
                       ? '<span style="font-size:0.78rem;color:var(--text-muted)">Nincs fejlesztés</span>'
                       : inv.map((bid, bidx) => {
                           const bt = BOOST_TYPES[bid] || { emoji: '?', name: bid };
-                          return `<span class="boost-chip boost-chip--${bid}">${bt.emoji} ${_esc(bt.name)}</span>`;
+                          return `<span class="boost-chip boost-chip--${bid}" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>`;
                         }).join('')
                     }
                   </div>

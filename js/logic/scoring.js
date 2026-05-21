@@ -53,16 +53,16 @@ export async function awardSharedPoints(gameCode, game, winnerTeamIndexes) {
 
   if (normalizedWinnerIndexes.length === 0) return;
 
-  // ── Hiperhajtómű: dupla pont ───────────────────────────────
+  // ── Hiperhajtómű: dupla pont csak az aktiváló csapatnak ───
   const hyperdriveActive = !!currentTurn.hyperdriveActive;
-  if (hyperdriveActive && normalizedWinnerIndexes.includes(currentTurn.teamIndex)) {
-    pts = pts * 2;
-  }
+  const warpTeamIdx = hyperdriveActive ? currentTurn.teamIndex : -1;
 
-  const awardedPoints = Math.floor(pts / normalizedWinnerIndexes.length);
+  const basePoints = Math.floor(pts / normalizedWinnerIndexes.length);
   normalizedWinnerIndexes.forEach(teamIndex => {
-    teams[teamIndex].score = (teams[teamIndex].score || 0) + awardedPoints;
+    const awarded = (teamIndex === warpTeamIdx) ? basePoints * 2 : basePoints;
+    teams[teamIndex].score = (teams[teamIndex].score || 0) + awarded;
   });
+  const awardedPoints = basePoints;
 
   let result = 'shared';
   if (normalizedWinnerIndexes.length === 1) {

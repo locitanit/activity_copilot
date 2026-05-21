@@ -191,18 +191,17 @@ export function renderPlayerGame(game, appState) {
         return `
           <div class="card" style="width:100%">
             <h3 style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;
-                       letter-spacing:0.08em;margin-bottom:0.6rem">Fejlesztések</h3>
+                       letter-spacing:0.08em;margin-bottom:0.6rem">Flotta arzenál</h3>
             <div class="boost-inventory" style="flex-direction:column;align-items:flex-start">
               ${inv.map((bid, bidx) => {
                 const bt = BOOST_TYPES[bid] || { emoji: '?', name: bid };
                 if (!canActivate || bid === 'shield') {
-                  const note = bid === 'shield' ? ' · automatikus védelem' : '';
-                  return `<span class="boost-chip boost-chip--${bid}">${bt.emoji} ${_esc(bt.name)}${note}</span>`;
+                  return `<span class="boost-chip boost-chip--${bid}" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>`;
                 }
                 if (bid === 'trap') {
                   const boardLen = game.settings?.boardLength || 30;
                   return `<div class="boost-activate-row">
-                    <span class="boost-chip boost-chip--trap">${bt.emoji} ${_esc(bt.name)}</span>
+                    <span class="boost-chip boost-chip--trap" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
                     <input type="number" min="1" max="${boardLen}" placeholder="Mező #"
                            class="trap-cell-input">
                     <button class="btn btn-warning trap-place-btn"
@@ -212,7 +211,7 @@ export function renderPlayerGame(game, appState) {
                 }
                 if (bid === 'torpedo') {
                   return `<div class="boost-activate-row">
-                    <span class="boost-chip boost-chip--torpedo">${bt.emoji} ${_esc(bt.name)}</span>
+                    <span class="boost-chip boost-chip--torpedo" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
                     <select class="torpedo-target-sel" data-bidx="${bidx}">
                       ${teams.map((t, ti) => ti === myTeamIdx ? '' :
                         `<option value="${ti}">${_esc(t.name)}</option>`).join('')}
@@ -224,7 +223,7 @@ export function renderPlayerGame(game, appState) {
                 }
                 if (bid === 'warp') {
                   return `<div class="boost-activate-row">
-                    <span class="boost-chip boost-chip--warp">${bt.emoji} ${_esc(bt.name)}</span>
+                    <span class="boost-chip boost-chip--warp" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
                     <button class="btn btn-primary warp-btn"
                             style="font-size:0.82rem;padding:.35rem .75rem"
                             data-bidx="${bidx}">⚡ Aktiválás</button>
@@ -232,7 +231,7 @@ export function renderPlayerGame(game, appState) {
                 }
                 if (bid === 'timewarp') {
                   return `<div class="boost-activate-row">
-                    <span class="boost-chip boost-chip--timewarp">${bt.emoji} ${_esc(bt.name)}</span>
+                    <span class="boost-chip boost-chip--timewarp" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
                     <button class="btn btn-primary timewarp-btn"
                             style="font-size:0.82rem;padding:.35rem .75rem"
                             data-bidx="${bidx}">⏳ Aktiválás</button>
@@ -294,6 +293,10 @@ export function renderPlayerGame(game, appState) {
 
   document.querySelectorAll('.warp-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
+      if (game.currentTurn?.hyperdriveActive) {
+        showToast('⚠️ Ebben a körben már aktív a hiperhajtómű!');
+        return;
+      }
       const bidx = parseInt(btn.dataset.bidx, 10);
       _allBoostBtns().forEach(b => b.disabled = true);
       try {
@@ -327,6 +330,10 @@ export function renderPlayerGame(game, appState) {
       const boardLen = game.settings?.boardLength || 30;
       if (!cellNum || cellNum < 1 || cellNum > boardLen) {
         showToast('⚠️ Adj meg érvényes mezőszámot (1–' + boardLen + ')!');
+        return;
+      }
+      if (game.traps?.[String(cellNum)] !== undefined) {
+        showToast(`⚠️ A ${cellNum}. mezőn már van csapda!`);
         return;
       }
       _allBoostBtns().forEach(b => b.disabled = true);

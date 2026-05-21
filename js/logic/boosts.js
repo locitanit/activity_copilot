@@ -12,7 +12,7 @@ export const BOOST_TYPES = {
     id:    'torpedo',
     name:  'Foton torpedó',
     emoji: '🚀',
-    description: 'Támadó fegyver. Célpont csapat: 30% → -1, 15% → -2, 5% → -3 fényév. 50% nem talál.',
+    description: 'Támadó fegyver. Célpont csapat: 30%: -1, 15%: -2, 5%: -3 fényév. 50% nem talál.',
     playerActivated: true,
   },
   trap: {
@@ -26,7 +26,7 @@ export const BOOST_TYPES = {
     id:    'warp',
     name:  'Hiperhajtómű',
     emoji: '⚡',
-    description: 'Ha kitalálják a feladványt → dupla fényév. Ha nem → -1 fényév.',
+    description: 'Ha kitalálják a feladványt dupla fényév. Ha nem, hátralép egy fényévet.',
     playerActivated: true,
   },
   shield: {
@@ -47,9 +47,12 @@ export const BOOST_TYPES = {
 
 const BOOST_IDS = Object.keys(BOOST_TYPES);
 
-// ── Véletlenszerű boost generálás ─────────────────────────────
+// ── Véletlenszerű boost generálás (torpedo 40%, többi 15%) ────
+const _BOOST_WEIGHTS = { torpedo: 40, trap: 15, warp: 15, shield: 15, timewarp: 15 };
+const _BOOST_POOL = Object.entries(_BOOST_WEIGHTS).flatMap(([id, w]) => Array(w).fill(id));
+
 export function getRandomBoost() {
-  return BOOST_IDS[Math.floor(Math.random() * BOOST_IDS.length)];
+  return _BOOST_POOL[Math.floor(Math.random() * _BOOST_POOL.length)];
 }
 
 // ── Boost hozzáadás csapat inventory-hoz ──────────────────────
@@ -163,11 +166,16 @@ export async function activateTrap(gameCode, game, teamIndex, cellNumber, boostI
   const team = teams[teamIndex];
   if (!team) throw new Error('Érvénytelen csapat.');
 
+  const existingTraps = game.traps || {};
+  if (existingTraps[String(cellNumber)] !== undefined) {
+    throw new Error(`A ${cellNumber}. mezőn már van csapda!`);
+  }
+
   const inventory = [...(team.inventory || [])];
   inventory.splice(boostIndex, 1);
 
   const traps = { ...(game.traps || {}) };
-  traps[String(cellNumber)] = teamIndex;
+  traps[String(cellNumber)] = true;
 
   const logMsg = `🕳️ ${team.name} gravitációs csapdát rakott le a ${cellNumber}. mezőre!`;
 
@@ -183,6 +191,9 @@ export async function activateTrap(gameCode, game, teamIndex, cellNumber, boostI
  * Bekapcsolja a currentTurn.hyperdriveActive flaget.
  */
 export async function activateHyperdrive(gameCode, game, teamIndex, boostIndex) {
+  if (game.currentTurn?.hyperdriveActive) {
+    throw new Error('Ebben a körben már aktív a hiperhajtómű!');
+  }
   const teams = game.teams || [];
   const team = teams[teamIndex];
   if (!team) throw new Error('Érvénytelen csapat.');
@@ -234,21 +245,20 @@ export async function checkTraps(gameCode, game, teamIndex, newScore) {
   const cellNum = Math.min(Math.max(newScore, 0), boardLength - 1) + 1;
   const traps = game.traps || {};
 
-  const trapOwner = traps[String(cellNum)];
-  if (trapOwner === undefined || trapOwner === teamIndex) return false; // Saját csapda nem hat
+  const hasTrap = traps[String(cellNum)] !== undefined;
+  if (!hasTrap) return false;
 
   // Pajzs ellenőrzés
   const inventory = [...(team.inventory || [])];
   const shieldResult = _removeShield(inventory);
 
   const updates = {};
-  const trapOwnerTeam = teams[trapOwner];
 
   if (shieldResult.removed) {
     // Pajzs véd, csapda is eltűnik
     updates[`teams/${teamIndex}/inventory`] = shieldResult.newInventory;
     updates[`traps/${cellNum}`] = null;
-    const logMsg = `🛡️ ${team.name} pajzsa kivédte ${trapOwnerTeam?.name ?? '?'} gravitációs csapdáját a ${cellNum}. mezőn!`;
+    const logMsg = `🛡️ ${team.name} pajzsa kivédte a gravitációs csapdát a ${cellNum}. mezőn!`;
     await updateGameData(gameCode, updates);
     await addBoostLog(gameCode, game, logMsg);
     return false;
