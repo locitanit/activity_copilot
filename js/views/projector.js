@@ -225,8 +225,7 @@ function _renderPlaying(el, game) {
           <div id="proj-timer" class="timer-display ${phaseInfo.colorClass}">
             ${formatTime(phaseInfo.secondsLeft)}
           </div>
-          <div id="proj-label" class="phase-label ${phaseInfo.colorClass}"
-               style="margin-top:0.75rem;font-size:1.1rem">
+          <div id="proj-label" class="phase-label ${phaseInfo.colorClass}">
             ${timerStartedAt ? phaseInfo.label : (timerHasValue ? 'Adatátvitel szünetel' : 'Várakozás...')}
           </div>
         </div>

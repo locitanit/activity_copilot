@@ -201,7 +201,13 @@ export function renderHostGame(game, appState) {
               : ''}
           </span>
         </div>
-        <button class="btn btn-secondary" id="btn-open-projector">🌌 Kivetítő</button>
+        <div class="proj-menu-wrap" id="projector-menu-wrap">
+          <button class="btn btn-secondary" id="btn-open-projector">🌌 Kivetítő ▾</button>
+          <div class="proj-menu" id="proj-menu" hidden>
+            <button class="proj-menu-item" id="proj-popup">🖥️ Megnyitás felugró ablakban</button>
+            <button class="proj-menu-item" id="proj-copy">🔗 Link másolása</button>
+          </div>
+        </div>
       </div>
 
       <div class="host-game-layout">
@@ -409,11 +415,39 @@ export function renderHostGame(game, appState) {
 
   // ── Event listeners ──────────────────────────────────────────
 
-  document.getElementById('btn-open-projector')?.addEventListener('click', () => {
-    const url = `index.html?role=projector&room=${encodeURIComponent(appState.gameCode)}`;
-    const win = window.open(url, `projector_${appState.gameCode}`, 'width=1280,height=720');
-    if (!win) showToast('⚠️ Engedélyezd a felugró ablakokat a böngészőben!');
-  });
+  {
+    const projUrl = () => new URL(
+      `index.html?role=projector&room=${encodeURIComponent(appState.gameCode)}`,
+      window.location.href
+    ).href;
+
+    document.getElementById('btn-open-projector')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const menu = document.getElementById('proj-menu');
+      if (menu) menu.hidden = !menu.hidden;
+    });
+
+    document.getElementById('proj-popup')?.addEventListener('click', () => {
+      document.getElementById('proj-menu').hidden = true;
+      const win = window.open(projUrl(), `projector_${appState.gameCode}`, 'width=1280,height=720');
+      if (!win) showToast('⚠️ Engedélyezd a felugró ablakokat a böngészőben!');
+    });
+
+    document.getElementById('proj-copy')?.addEventListener('click', async () => {
+      document.getElementById('proj-menu').hidden = true;
+      try {
+        await navigator.clipboard.writeText(projUrl());
+        showToast('🔗 Kivetítő link vágólapra másolva!');
+      } catch {
+        showToast('⚠️ Nem sikerült a másolás – másold kézzel: ' + projUrl());
+      }
+    });
+
+    document.addEventListener('click', () => {
+      const menu = document.getElementById('proj-menu');
+      if (menu) menu.hidden = true;
+    }, { capture: false });
+  }
 
   document.getElementById('btn-reveal-word')?.addEventListener('click', async () => {
     const btn = document.getElementById('btn-reveal-word');
