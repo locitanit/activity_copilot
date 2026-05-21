@@ -49,7 +49,8 @@ export function renderWinner(game, appState) {
 
   document.getElementById('btn-new-game-winner').addEventListener('click', () => {
     // Állapot törlése és visszatérés a főmenüre
-    import('../app.js').then(({ state, renderLanding }) => {
+    import('../app.js').then(({ state, renderLanding, clearSession }) => {
+      clearSession();
       state.gameCode   = null;
       state.playerId   = null;
       state.playerName = null;

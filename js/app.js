@@ -20,7 +20,22 @@ export const state = {
   isHost:      false,   // Host-e a kliens?
   _unsubscribe: null,   // Firebase onValue leiratkozó függvény
 };
+// ── Session persistence (reconnect támogatás) ──────────────────────
+const _SESSION_KEY = 'rmg-session';
 
+function saveSession() {
+  if (!state.gameCode) return;
+  localStorage.setItem(_SESSION_KEY, JSON.stringify({
+    gameCode:    state.gameCode,
+    playerId:    state.playerId,
+    playerName:  state.playerName,
+    isHost:      state.isHost,
+  }));
+}
+
+export function clearSession() {
+  localStorage.removeItem(_SESSION_KEY);
+}
 // ── View-váltó ─────────────────────────────────────────────────
 /**
  * Pontosan egy view-t mutat meg, az összes többit elrejti.
@@ -53,6 +68,7 @@ export function showToast(message, duration = 3000) {
  * @param {string} code  Játékkód
  */
 export function startGameListener(code) {
+  saveSession();
   // Korábbi listener leállítása
   if (state._unsubscribe) {
     state._unsubscribe();
@@ -61,6 +77,7 @@ export function startGameListener(code) {
 
   state._unsubscribe = listenToGame(code, (game) => {
     if (!game) {
+      clearSession();
       showToast('A játék nem található vagy törölve lett.');
       showView('view-landing');
       renderLanding();
@@ -154,11 +171,27 @@ if (urlRole === 'projector' && urlRoom) {
 
 } else {
   // ── Normál alkalmazás ──────────────────────────────────────
-  setTimeout(() => {
-    _hideSplash();
-    showView('view-landing');
-    renderLanding();
-  }, 4000);
+  const _saved = localStorage.getItem(_SESSION_KEY);
+  if (_saved) {
+    try {
+      const sess = JSON.parse(_saved);
+      state.gameCode   = sess.gameCode;
+      state.playerId   = sess.playerId   ?? null;
+      state.playerName = sess.playerName ?? null;
+      state.isHost     = !!sess.isHost;
+      _hideSplash();
+      startGameListener(sess.gameCode);
+    } catch {
+      clearSession();
+      setTimeout(() => { _hideSplash(); showView('view-landing'); renderLanding(); }, 4000);
+    }
+  } else {
+    setTimeout(() => {
+      _hideSplash();
+      showView('view-landing');
+      renderLanding();
+    }, 4000);
+  }
 }
 
 // ── Exportok más view-moduloknak ──────────────────────────────
