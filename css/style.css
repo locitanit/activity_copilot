@@ -396,8 +396,12 @@ input:focus, select:focus {
   width: min(320px, 82vw, 44vh);
   height: auto;
   margin: clamp(0.3rem, 1.5vh, 1.2rem) auto;
-  opacity: 0.85;
   filter: drop-shadow(0 0 55px rgba(100,0,200,.7));
+  animation: bh-pulse 6s ease-in-out infinite;
+}
+@keyframes bh-pulse {
+  0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 55px rgba(100,0,200,.7)); }
+  50%       { transform: scale(1.04); filter: drop-shadow(0 0 80px rgba(120,0,240,.9)); }
 }
 .obj-station {
   width: 200px; height: auto;
