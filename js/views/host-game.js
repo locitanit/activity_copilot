@@ -25,7 +25,134 @@ export function renderHostGame(game, appState) {
 
   const el = document.getElementById('view-host-game');
 
-  if (!game || game.status !== 'playing') {
+  if (!game) {
+    el.innerHTML = `<div style="margin:auto;text-align:center">
+      <p class="text-muted">Nincs aktív játék.</p>
+    </div>`;
+    return;
+  }
+
+  // ── BRIEFING PHASE: Host sees mission text + launch button ───
+  if (game.status === 'briefing') {
+    const players = game.players || {};
+    const teams   = game.teams   || [];
+    const playerCount = Object.keys(players).length;
+    const allAssigned = Object.values(players).every(p => p.teamIndex >= 0);
+    const canLaunch = playerCount >= 1 && allAssigned;
+
+    el.innerHTML = `
+      <div style="width:100%;max-width:860px;margin:0 auto;padding:1rem">
+        <div class="briefing-overlay" style="position:relative;min-height:auto;padding:0">
+          <div class="briefing-hologram" style="max-height:none">
+            <div class="briefing-scanlines"></div>
+            <div class="briefing-content">
+              <div class="briefing-header-lines">
+                <span class="briefing-line">&gt;&gt;&gt; BIZTONSÁGI PROTOKOLL: AKTÍV</span>
+                <span class="briefing-line">&gt;&gt;&gt; HITELESÍTÉS: KÓDOLT CSATORNA</span>
+                <span class="briefing-line">&gt;&gt;&gt; FELADÓ: HOUSTON IRÁNYÍTÓKÖZPONT</span>
+                <span class="briefing-line">&gt;&gt;&gt; CÍMZETTEK: RMG ŰRFLOTTÁK – DIGITÁLIS KULTÚRA DIVÍZIÓ</span>
+              </div>
+
+              <h2 class="briefing-title">KADÉTOK! FIGYELEM!</h2>
+
+              <p class="briefing-text">
+                A 23. század legfontosabb tudásbázisa, a <strong>Radnóti Központi Archívum</strong> kritikus találatot kapott. A teljes Digitális Kultúra adatbázis megsemmisült, a fogalmak és kódok erősen titkosított adatcsomagok formájában szóródtak szét a mélyűrben. Ha ezek az adatok elvesznek, a galaxis technológiai sötétségbe borul.
+              </p>
+              <p class="briefing-text">
+                Az Irányítóközpont titeket választott a mentőakcióra. A küldetés a következő: <strong>szeljétek át a galaxist, és érjétek el elsőként a biztonságos Proxima bázist!</strong> A hajtóművetek azonban csak akkor kap energiát, ha útközben sikeresen elfogjátok és dekódoljátok a sérült adatcsomagokat.
+              </p>
+
+              <div class="briefing-rules">
+                <h3 class="briefing-rules-title">A KÜLDETÉS SZABÁLYAI:</h3>
+                <div class="briefing-rule">
+                  <span class="briefing-rule-num">1</span>
+                  <div>
+                    <strong>DEKÓDOLÁS:</strong> A magas háttérsugárzás miatt a kommunikációs modulok tönkrementek. Az adatcsomagokat befogó asztronauta nem mondhatja ki a fogalmat! Csak alternatív módszerekkel (rajz, mutogatás, kódolt körülírás) adhatja át az információt a legénységének.
+                  </div>
+                </div>
+                <div class="briefing-rule">
+                  <span class="briefing-rule-num">2</span>
+                  <div>
+                    <strong>TITKOSÍTOTT CSATORNA (0-30 mp):</strong> A pajzsok még tartanak. Csak a saját flottád hallja az adást.
+                  </div>
+                </div>
+                <div class="briefing-rule">
+                  <span class="briefing-rule-num">3</span>
+                  <div>
+                    <strong>ADATBÁZIS KAPCSOLAT (30-60 mp):</strong> A hajó számítógépe engedélyezi a fizikai archívumok elérését – a flotta bevetheti a korábbi küldetések hajónaplóit!
+                  </div>
+                </div>
+                <div class="briefing-rule">
+                  <span class="briefing-rule-num">4</span>
+                  <div>
+                    <strong>NYÍLT FREKVENCIA (60-90 mp):</strong> A titkosítás összeomlik! Bármelyik rivális flotta lehallgathatja az adást, és ellophatja az energiát a saját hajtóművéhez.
+                  </div>
+                </div>
+              </div>
+
+              <p class="briefing-text">
+                Az űr nem biztonságos. A sikeres akciókért cserébe Houston fejlesztéseket küld, de vigyázzatok: a térség tele van instabil féreglyukakkal és anomáliákkal, amik pillanatok alatt átrendezhetik az erőviszonyokat.
+              </p>
+
+              <p class="briefing-text briefing-closing">
+                A rendszerek élesítve. Sok szerencsét, Kadétok. A Radnóti Miklós Galaxis jövője a ti kezetekben van.
+              </p>
+
+              <div class="briefing-footer">
+                <span class="briefing-line">&gt;&gt;&gt; ÜZENET VÉGE &lt;&lt;&lt;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:1.5rem;text-align:center">
+          <h3 style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);
+                     margin-bottom:0.75rem;font-family:'Orbitron',monospace">
+            Irányítóközpont Státusz
+          </h3>
+          <p style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem">
+            Asztronáuták a pályán: <span style="color:var(--primary);font-family:'Orbitron',monospace">${playerCount}</span>
+          </p>
+          ${teams.map((t, i) => {
+            const count = Object.values(players).filter(p => p.teamIndex === i).length;
+            return `<span style="display:inline-block;margin:0.2rem 0.5rem;font-size:0.88rem;color:${TEAM_COLORS[i]}">
+              ${_esc(t.name)}: ${count}
+            </span>`;
+          }).join('')}
+
+          <div style="margin-top:1.25rem">
+            <button class="btn btn-success btn-lg btn-full" id="btn-launch-game"
+              ${canLaunch ? '' : 'disabled'}
+              style="font-size:1.2rem;padding:1rem 2rem">
+              🚀 Első kör indítása – Misszió GO!
+            </button>
+          </div>
+          ${!canLaunch
+            ? `<p class="text-muted" style="font-size:0.82rem;margin-top:0.6rem">
+                 Várj, amíg minden diák belép a játékba!
+               </p>`
+            : `<p style="font-size:0.82rem;margin-top:0.6rem;color:var(--success)">
+                 ✅ Minden asztronáuta a fedélzeten! Indíthatod az első kört.
+               </p>`}
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btn-launch-game')?.addEventListener('click', async () => {
+      const btn = document.getElementById('btn-launch-game');
+      if (btn) { btn.disabled = true; btn.textContent = 'Indítás...'; }
+      try {
+        await updateGameData(appState.gameCode, { status: 'playing' });
+      } catch (err) {
+        showToast('❌ Hiba: ' + err.message);
+        if (btn) { btn.disabled = false; btn.textContent = '🚀 Első kör indítása – Misszió GO!'; }
+      }
+    });
+
+    return;
+  }
+
+  if (game.status !== 'playing') {
     el.innerHTML = `<div style="margin:auto;text-align:center">
       <p class="text-muted">Nincs aktív játék.</p>
     </div>`;

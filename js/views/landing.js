@@ -14,7 +14,7 @@ export function renderLanding() {
     <div class="star-field sf2" aria-hidden="true"></div>
     <div class="space-planet sp-1" aria-hidden="true"></div>
     <h1>RMG ASTRO-ACTIVITY</h1>
-    <p class="subtitle">Valós idejű galaktikus csapatjáték</p>
+    <p class="subtitle">Galaktikus csapatjáték</p>
 
     <div class="btn-group">
       <button class="btn btn-primary btn-lg" id="btn-new-game">

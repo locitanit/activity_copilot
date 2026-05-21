@@ -185,7 +185,7 @@ async function _handleStartGame(game, playerEntries, appState) {
   };
 
   // Atomikus Firebase írás: csapat-kiosztás + játékstátusz + első kör
-  updates['status']       = 'playing';
+  updates['status']       = 'briefing';
   updates['currentTurn']  = currentTurn;
   updates['upcomingTurns'] = upcomingTurns;
   updates['turnHistory']  = [];
