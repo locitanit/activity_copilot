@@ -4,10 +4,17 @@
  * awardPoints      – pontot ítél egy csapatnak, lezárja a kört
  * awardSharedPoints – pontot oszt szet tobb csapat kozott
  * endTurnNoScore   – lezárja a kört pont nélkül
+ *
+ * Boost integráció:
+ * - Fázis 1 helyes válasz → véletlenszerű boost a nyertes csapatnak
+ * - Hiperhajtómű (hyperdriveActive) → dupla pont / -1 pont
+ * - Csapda ellenőrzés score módosítás után
  */
 
 import { updateGameData } from '../firebase-config.js';
 import { startNextTurn }  from './turn-manager.js';
+import { getCurrentPhase } from './timer.js';
+import { addBoostToTeam, checkTraps } from './boosts.js';
 
 // ── Belső segéd ────────────────────────────────────────────────
 function _buildUpdatedPlayers(players, activePlayerId) {
@@ -38,13 +45,19 @@ export async function awardSharedPoints(gameCode, game, winnerTeamIndexes) {
 
   const teams   = (game.teams || []).map(t => ({ ...t }));
   const players = game.players || {};
-  const pts     = currentTurn.points || 0;
+  let pts       = currentTurn.points || 0;
   const normalizedWinnerIndexes = [...new Set(
     (Array.isArray(winnerTeamIndexes) ? winnerTeamIndexes : [])
       .filter(idx => Number.isInteger(idx) && idx >= 0 && idx < teams.length)
   )];
 
   if (normalizedWinnerIndexes.length === 0) return;
+
+  // ── Hiperhajtómű: dupla pont ───────────────────────────────
+  const hyperdriveActive = !!currentTurn.hyperdriveActive;
+  if (hyperdriveActive && normalizedWinnerIndexes.includes(currentTurn.teamIndex)) {
+    pts = pts * 2;
+  }
 
   const awardedPoints = Math.floor(pts / normalizedWinnerIndexes.length);
   normalizedWinnerIndexes.forEach(teamIndex => {
@@ -59,13 +72,14 @@ export async function awardSharedPoints(gameCode, game, winnerTeamIndexes) {
   const historyEntry = {
     word:            currentTurn.word,
     taskType:        currentTurn.taskType,
-    points:          pts,
+    points:          currentTurn.points,
     awardedPoints,
     teamIndex:       currentTurn.teamIndex,
     activePlayerId:  currentTurn.activePlayerId || null,
     winnerTeamIndex: normalizedWinnerIndexes.length === 1 ? normalizedWinnerIndexes[0] : null,
     winnerTeamIndexes: normalizedWinnerIndexes,
     result,
+    hyperdriveActive,
     timestamp:       Date.now(),
   };
   const turnHistory = [
@@ -90,7 +104,35 @@ export async function awardSharedPoints(gameCode, game, winnerTeamIndexes) {
 
   await updateGameData(gameCode, updates);
 
+  // ── Boost szerzés: csak Fázis 1-ben ───────────────────────
+  const timeDilation = !!currentTurn.timeDilationActive;
+  const phase = getCurrentPhase(
+    currentTurn.timerStartedAt,
+    currentTurn.timerElapsedMs || 0,
+    timeDilation
+  );
+
+  if (phase === 1 && normalizedWinnerIndexes.length === 1) {
+    const winnerIdx = normalizedWinnerIndexes[0];
+    if (winnerIdx === currentTurn.teamIndex) {
+      // Frissített game-et kell átadni a boostLog miatt
+      const updatedGame = { ...game, teams, turnHistory };
+      try {
+        await addBoostToTeam(gameCode, updatedGame, winnerIdx);
+      } catch (_) { /* silent */ }
+    }
+  }
+
   if (!hasWinner) {
+    // Csapda ellenőrzés az összes nyertes csapatra
+    const updatedGame2 = { ...game, teams, turnHistory };
+    for (const idx of normalizedWinnerIndexes) {
+      try {
+        const trapped = await checkTraps(gameCode, updatedGame2, idx, teams[idx].score);
+        if (trapped) teams[idx].skipNextTurn = true;
+      } catch (_) { /* silent */ }
+    }
+
     await startNextTurn(gameCode, {
       ...game,
       teams,
@@ -111,6 +153,17 @@ export async function endTurnNoScore(gameCode, game) {
   if (!currentTurn) return;
 
   const players = game.players || {};
+  const teams   = (game.teams || []).map(t => ({ ...t }));
+
+  // ── Hiperhajtómű büntetés: -1 fényév ──────────────────────
+  const hyperdriveActive = !!currentTurn.hyperdriveActive;
+  if (hyperdriveActive) {
+    const teamIdx = currentTurn.teamIndex;
+    if (teamIdx >= 0 && teamIdx < teams.length) {
+      teams[teamIdx].score = Math.max(0, (teams[teamIdx].score || 0) - 1);
+    }
+  }
+
   const historyEntry = {
     word:            currentTurn.word,
     taskType:        currentTurn.taskType,
@@ -119,6 +172,7 @@ export async function endTurnNoScore(gameCode, game) {
     activePlayerId:  currentTurn.activePlayerId || null,
     winnerTeamIndex: null,
     result:          'unsolved',
+    hyperdriveActive,
     timestamp:       Date.now(),
   };
   const turnHistory = [
@@ -127,6 +181,11 @@ export async function endTurnNoScore(gameCode, game) {
   ];
 
   const updates = { turnHistory };
+
+  if (hyperdriveActive) {
+    updates.teams = teams;
+  }
+
   const activePlayerId = currentTurn.activePlayerId;
   if (activePlayerId && players[activePlayerId]) {
     updates[`players/${activePlayerId}/turnCount`] =
@@ -137,6 +196,7 @@ export async function endTurnNoScore(gameCode, game) {
 
   await startNextTurn(gameCode, {
     ...game,
+    teams: hyperdriveActive ? teams : game.teams,
     turnHistory,
     players: _buildUpdatedPlayers(players, activePlayerId),
   });

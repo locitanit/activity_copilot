@@ -6,6 +6,8 @@
  */
 
 import { getElapsedMs, getPhaseInfo, formatTime } from '../logic/timer.js';
+import { showToast } from '../app.js';
+import { activateTorpedo, activateTrap, activateHyperdrive, activateTimeDilation, BOOST_TYPES } from '../logic/boosts.js';
 
 const TEAM_COLORS = ['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899'];
 
@@ -109,7 +111,8 @@ export function renderPlayerGame(game, appState) {
   const players        = game.players     || {};
   const timerStartedAt = currentTurn.timerStartedAt || null;
   const timerElapsedMs = currentTurn.timerElapsedMs || 0;
-  const phaseInfo      = getPhaseInfo(timerStartedAt, timerElapsedMs);
+  const timeDilationActive = !!currentTurn.timeDilationActive;
+  const phaseInfo      = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive);
   const timerHasValue  = getElapsedMs(timerStartedAt, timerElapsedMs) > 0;
 
   const isActive      = currentTurn.activePlayerId === appState.playerId;
@@ -180,7 +183,66 @@ export function renderPlayerGame(game, appState) {
           ${timerStartedAt ? phaseInfo.label : (timerHasValue ? 'Adatátvitel szüneteltetve' : 'Adatátvitel még nem indult')}
         </div>
       </div>
-
+      <!-- Fejlesztések (Boost) -->
+      ${(() => {
+        const inv = myTeam?.inventory || [];
+        if (inv.length === 0) return '';
+        const canActivate = isActive && !currentTurn.wordRevealed && !timerHasValue;
+        return `
+          <div class="card" style="width:100%">
+            <h3 style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;
+                       letter-spacing:0.08em;margin-bottom:0.6rem">Fejlesztések</h3>
+            <div class="boost-inventory" style="flex-direction:column;align-items:flex-start">
+              ${inv.map((bid, bidx) => {
+                const bt = BOOST_TYPES[bid] || { emoji: '?', name: bid };
+                if (!canActivate || bid === 'shield') {
+                  const note = bid === 'shield' ? ' · automatikus védelem' : '';
+                  return `<span class="boost-chip boost-chip--${bid}">${bt.emoji} ${_esc(bt.name)}${note}</span>`;
+                }
+                if (bid === 'trap') {
+                  const boardLen = game.settings?.boardLength || 30;
+                  return `<div class="boost-activate-row">
+                    <span class="boost-chip boost-chip--trap">${bt.emoji} ${_esc(bt.name)}</span>
+                    <input type="number" min="1" max="${boardLen}" placeholder="Mező #"
+                           class="trap-cell-input">
+                    <button class="btn btn-warning trap-place-btn"
+                            style="font-size:0.82rem;padding:.35rem .75rem"
+                            data-bidx="${bidx}">🕳️ Lerakás</button>
+                  </div>`;
+                }
+                if (bid === 'torpedo') {
+                  return `<div class="boost-activate-row">
+                    <span class="boost-chip boost-chip--torpedo">${bt.emoji} ${_esc(bt.name)}</span>
+                    <select class="torpedo-target-sel" data-bidx="${bidx}">
+                      ${teams.map((t, ti) => ti === myTeamIdx ? '' :
+                        `<option value="${ti}">${_esc(t.name)}</option>`).join('')}
+                    </select>
+                    <button class="btn btn-danger torpedo-fire-btn"
+                            style="font-size:0.82rem;padding:.35rem .75rem"
+                            data-bidx="${bidx}">🚀 Tüzelés</button>
+                  </div>`;
+                }
+                if (bid === 'warp') {
+                  return `<div class="boost-activate-row">
+                    <span class="boost-chip boost-chip--warp">${bt.emoji} ${_esc(bt.name)}</span>
+                    <button class="btn btn-primary warp-btn"
+                            style="font-size:0.82rem;padding:.35rem .75rem"
+                            data-bidx="${bidx}">⚡ Aktiválás</button>
+                  </div>`;
+                }
+                if (bid === 'timewarp') {
+                  return `<div class="boost-activate-row">
+                    <span class="boost-chip boost-chip--timewarp">${bt.emoji} ${_esc(bt.name)}</span>
+                    <button class="btn btn-primary timewarp-btn"
+                            style="font-size:0.82rem;padding:.35rem .75rem"
+                            data-bidx="${bidx}">⏳ Aktiválás</button>
+                  </div>`;
+                }
+                return '';
+              }).join('')}
+            </div>
+          </div>`;
+      })()}
       <!-- Táblaállás (kompakt) -->
       <div class="card" style="width:100%">
         <h3 style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;
@@ -205,15 +267,85 @@ export function renderPlayerGame(game, appState) {
 
     </div>
   `;
+  // ── Boost aktiválók ─────────────────────────────────────────
+  const _allBoostBtns = () => document.querySelectorAll('.torpedo-fire-btn,.warp-btn,.timewarp-btn,.trap-place-btn');
 
-  // ── Helyi timer interval ──────────────────────────────────────
+  document.querySelectorAll('.torpedo-fire-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const bidx = parseInt(btn.dataset.bidx, 10);
+      const sel  = btn.closest('.boost-activate-row')?.querySelector('.torpedo-target-sel');
+      const targetIdx = parseInt(sel?.value ?? '0', 10);
+      _allBoostBtns().forEach(b => b.disabled = true);
+      try {
+        const result = await activateTorpedo(appState.gameCode, game, myTeamIdx, targetIdx, bidx);
+        if (result.shielded) {
+          showToast('🛡️ A célpont pajzsa kivédte a torpedót!');
+        } else if (result.hit) {
+          showToast(`🚀 Torpedó találat! −${result.damage} fényév a célponttól.`);
+        } else {
+          showToast('🚀 A torpedó nem talált célba.');
+        }
+      } catch (err) {
+        showToast('❌ Hiba: ' + err.message);
+        _allBoostBtns().forEach(b => b.disabled = false);
+      }
+    });
+  });
+
+  document.querySelectorAll('.warp-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const bidx = parseInt(btn.dataset.bidx, 10);
+      _allBoostBtns().forEach(b => b.disabled = true);
+      try {
+        await activateHyperdrive(appState.gameCode, game, myTeamIdx, bidx);
+        showToast('⚡ Hiperhajtomű aktiválva! Dupla pont siker esetén.');
+      } catch (err) {
+        showToast('❌ Hiba: ' + err.message);
+        _allBoostBtns().forEach(b => b.disabled = false);
+      }
+    });
+  });
+
+  document.querySelectorAll('.timewarp-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const bidx = parseInt(btn.dataset.bidx, 10);
+      _allBoostBtns().forEach(b => b.disabled = true);
+      try {
+        await activateTimeDilation(appState.gameCode, game, myTeamIdx, bidx);
+        showToast('⏳ Időtágulás aktiválva! Az 1. fázis 45 mp-ig tart.');
+      } catch (err) {
+        showToast('❌ Hiba: ' + err.message);
+        _allBoostBtns().forEach(b => b.disabled = false);
+      }
+    });
+  });
+  document.querySelectorAll('.trap-place-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const bidx = parseInt(btn.dataset.bidx, 10);
+      const input = btn.closest('.boost-activate-row')?.querySelector('.trap-cell-input');
+      const cellNum = parseInt(input?.value ?? '', 10);
+      const boardLen = game.settings?.boardLength || 30;
+      if (!cellNum || cellNum < 1 || cellNum > boardLen) {
+        showToast('⚠️ Adj meg érvényes mezőszámot (1–' + boardLen + ')!');
+        return;
+      }
+      _allBoostBtns().forEach(b => b.disabled = true);
+      try {
+        await activateTrap(appState.gameCode, game, myTeamIdx, cellNum, bidx);
+        showToast(`🕳️ Csapda lerakva a ${cellNum}. mezőre!`);
+      } catch (err) {
+        showToast('❌ Hiba: ' + err.message);
+        _allBoostBtns().forEach(b => b.disabled = false);
+      }
+    });
+  });  // ── Helyi timer interval ──────────────────────────────────────
   if (timerStartedAt) {
     _timerInterval = setInterval(() => {
       const timerEl = document.getElementById('pg-timer');
       const labelEl = document.getElementById('pg-label');
       if (!timerEl) { clearInterval(_timerInterval); _timerInterval = null; return; }
 
-      const info = getPhaseInfo(timerStartedAt, timerElapsedMs);
+      const info = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive);
       timerEl.className = `host-timer-display ${info.colorClass}`;
       timerEl.innerHTML = formatTime(info.secondsLeft);
 

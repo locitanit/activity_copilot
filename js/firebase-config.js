@@ -73,10 +73,12 @@ export async function createGame(settings) {
       allowedTaskTypes: settings.allowedTaskTypes || [],
     },
     players:       {},
-    teams:         teamNames.map(name => ({ name, score: 0 })),
+    teams:         teamNames.map(name => ({ name, score: 0, inventory: [], skipNextTurn: false })),
     currentTurn:   null,
     upcomingTurns: [],
     turnHistory:   [],
+    traps:         {},
+    boostLog:      [],
   };
 
   await set(ref(db, `games/${code}`), gameData);

@@ -2,10 +2,12 @@
  * logic/turn-manager.js – Körvezérlő logika
  * ═══════════════════════════════════════════
  * Feladványgenerálás, játékosválasztás, kör-indítás, újrasorsolás.
+ * Boost integráció: skipNextTurn kezelés, hyperdriveActive / timeDilationActive reset.
  */
 
 import { topics }          from '../data/topics.js';
 import { updateGameData }  from '../firebase-config.js';
+import { addBoostLog }     from './boosts.js';
 
 // ── Segédfüggvény: szólista összeállítása ──────────────────────
 function _buildWordPool(settings, excludeWords = []) {
@@ -65,6 +67,7 @@ export function selectNextPlayer(players, teamIndex) {
 /**
  * Kiszámolja a következő csapatot és játékost, feltölti az upcomingTurns sort,
  * majd atomikusan beírja Firebase-be.
+ * Boost: kezeli a skipNextTurn-t (gravitációs csapda).
  *
  * @param {string} gameCode
  * @param {Object} game - teljes game snapshot
@@ -84,10 +87,36 @@ export async function startNextTurn(gameCode, game) {
     ...upcoming.map(u => u.word),
   ];
 
-  // Következő csapat
+  // Következő csapat (skipNextTurn kezeléssel)
   let nextTeamIndex = 0;
   if (game.currentTurn && typeof game.currentTurn.teamIndex === 'number') {
     nextTeamIndex = (game.currentTurn.teamIndex + 1) % teamCount;
+  }
+
+  // skipNextTurn ellenőrzés: max teamCount iteráció (hogy ne legyen végtelen ciklus)
+  const skipUpdates = {};
+  let skippedAny = false;
+  for (let attempts = 0; attempts < teamCount; attempts++) {
+    const team = teams[nextTeamIndex];
+    if (team && team.skipNextTurn) {
+      // Ezt a csapatot átlépjük
+      skipUpdates[`teams/${nextTeamIndex}/skipNextTurn`] = false;
+      skippedAny = true;
+
+      // Naplózzuk
+      try {
+        await addBoostLog(gameCode, game,
+          `🕳️ ${team.name} kimarad a köréből a gravitációs csapda miatt!`);
+      } catch (_) { /* silent */ }
+
+      nextTeamIndex = (nextTeamIndex + 1) % teamCount;
+    } else {
+      break;
+    }
+  }
+
+  if (Object.keys(skipUpdates).length > 0) {
+    await updateGameData(gameCode, skipUpdates);
   }
 
   // Feladvány: elsőként az upcoming sort használjuk, különben generálunk
@@ -105,13 +134,15 @@ export async function startNextTurn(gameCode, game) {
   const activePlayerId = selectNextPlayer(players, nextTeamIndex);
 
   const newCurrentTurn = {
-    word:          turnBase.word,
-    taskType:      turnBase.taskType,
-    points:        turnBase.points,
-    teamIndex:     nextTeamIndex,
-    activePlayerId: activePlayerId || null,
-    timerStartedAt: null,
-    wordRevealed:   false,
+    word:               turnBase.word,
+    taskType:           turnBase.taskType,
+    points:             turnBase.points,
+    teamIndex:          nextTeamIndex,
+    activePlayerId:     activePlayerId || null,
+    timerStartedAt:     null,
+    wordRevealed:       false,
+    hyperdriveActive:   false,
+    timeDilationActive: false,
   };
 
   // upcomingTurns feltöltése max 3-ra

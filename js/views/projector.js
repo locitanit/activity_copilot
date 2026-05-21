@@ -184,7 +184,8 @@ function _renderPlaying(el, game) {
   const players        = game.players     || {};
   const timerStartedAt = currentTurn.timerStartedAt || null;
   const timerElapsedMs = currentTurn.timerElapsedMs || 0;
-  const phaseInfo      = getPhaseInfo(timerStartedAt, timerElapsedMs);
+  const timeDilationActive = !!currentTurn.timeDilationActive;
+  const phaseInfo      = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive);
   const timerHasValue  = getElapsedMs(timerStartedAt, timerElapsedMs) > 0;
   const boardLength    = game.settings?.boardLength || 30;
   const gameCode       = state.gameCode || '';
@@ -209,7 +210,12 @@ function _renderPlaying(el, game) {
         ${_esc(gameCode)}
       </div>
     </div>
-
+    ${Array.isArray(game.boostLog) && game.boostLog.length > 0 ? `
+    <div class="boost-log-strip">
+      ${[...game.boostLog].reverse().slice(0, 3).map(e =>
+        `<div class="boost-log-entry">${_esc(e.message || '')}</div>`
+      ).join('')}
+    </div>` : ''}
     <!-- ── Fő terület: bal sáv + kígyótábla ─────────────── -->
     <div style="flex:1;display:flex;gap:1.5rem;min-height:0;width:100%;overflow:visible">
 
@@ -247,7 +253,7 @@ function _renderPlaying(el, game) {
 
       <!-- Jobb oldal: kígyótábla -->
       <div style="flex:1;min-width:0;display:flex;overflow:hidden;align-items:stretch;justify-content:center">
-        ${_renderSnakeBoard(teams, boardLength)}
+        ${_renderSnakeBoard(teams, boardLength, game.traps || {})}
       </div>
     </div>
   `;
@@ -259,7 +265,7 @@ function _renderPlaying(el, game) {
       const labelEl = document.getElementById('proj-label');
       if (!timerEl) { clearInterval(_timerInterval); _timerInterval = null; return; }
 
-      const info = getPhaseInfo(timerStartedAt, timerElapsedMs);
+      const info = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive);
       timerEl.className = `timer-display ${info.colorClass}`;
       timerEl.innerHTML = formatTime(info.secondsLeft);
 
@@ -277,7 +283,7 @@ function _renderPlaying(el, game) {
 }
 
 // ── Kígyótábla renderelés ────────────────────────────────────
-function _renderSnakeBoard(teams, boardLength) {
+function _renderSnakeBoard(teams, boardLength, traps = {}) {
   // Oszlopszám a tábla hossza alapján
   let cols;
   if      (boardLength <= 12) cols = 4;
@@ -333,6 +339,7 @@ function _renderSnakeBoard(teams, boardLength) {
       if (tokens.length) cls += ' has-token';
 
       html += `<div class="${cls}">`;
+      if (traps[String(cellNum)] !== undefined) html += '<span class="trap-marker">🕳️</span>';
       html += `<span class="snake-num">${isStart ? '🏁' : isEnd ? '🏆' : cellNum}</span>`;
       if (tokens.length) {
         html += '<div class="snake-tokens">';

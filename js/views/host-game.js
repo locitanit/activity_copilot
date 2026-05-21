@@ -13,6 +13,7 @@ import { updateGameData }                                from '../firebase-confi
 import { rerollCurrentWord }                             from '../logic/turn-manager.js';
 import { awardPoints, awardSharedPoints, endTurnNoScore } from '../logic/scoring.js';
 import { getElapsedMs, getPhaseInfo, formatTime }        from '../logic/timer.js';
+import { BOOST_TYPES }                                   from '../logic/boosts.js';
 
 const TEAM_COLORS = ['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899'];
 
@@ -163,10 +164,11 @@ export function renderHostGame(game, appState) {
   const teams           = game.teams       || [];
   const timerStartedAt  = currentTurn.timerStartedAt || null;
   const timerElapsedMs  = currentTurn.timerElapsedMs || 0;
+  const timeDilationActive = !!currentTurn.timeDilationActive;
   const timerRunning    = !!timerStartedAt;
   const elapsedMs       = getElapsedMs(timerStartedAt, timerElapsedMs);
   const timerHasValue   = elapsedMs > 0;
-  const phaseInfo       = getPhaseInfo(timerStartedAt, timerElapsedMs);
+  const phaseInfo       = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive);
   const timerExpired    = phaseInfo.phase >= 4;
   const wordRevealed    = !!currentTurn.wordRevealed;
 
@@ -338,6 +340,28 @@ export function renderHostGame(game, appState) {
                               height:8px;overflow:hidden">
                     <div style="height:100%;width:${pct}%;background:${TEAM_COLORS[i]};
                                 transition:width 0.5s"></div>
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>
+
+          <!-- Fejlesztések (Boost) szekció -->
+          <div class="card dashboard-section">
+            <h3>Fejlesztések</h3>
+            ${teams.map((t, i) => {
+              const inv = t.inventory || [];
+              const boardLen = game.settings?.boardLength || 30;
+              return `
+                <div style="margin-bottom:0.6rem">
+                  <span style="font-weight:600;color:${TEAM_COLORS[i]};font-size:0.88rem">${_esc(t.name)}</span>
+                  <div class="boost-inventory">
+                    ${inv.length === 0
+                      ? '<span style="font-size:0.78rem;color:var(--text-muted)">Nincs fejlesztés</span>'
+                      : inv.map((bid, bidx) => {
+                          const bt = BOOST_TYPES[bid] || { emoji: '?', name: bid };
+                          return `<span class="boost-chip boost-chip--${bid}">${bt.emoji} ${_esc(bt.name)}</span>`;
+                        }).join('')
+                    }
                   </div>
                 </div>`;
             }).join('')}
@@ -521,7 +545,7 @@ export function renderHostGame(game, appState) {
       const labelEl = document.getElementById('hg-label');
       if (!timerEl) { clearInterval(_timerInterval); _timerInterval = null; return; }
 
-      const info = getPhaseInfo(timerStartedAt, timerElapsedMs);
+      const info = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive);
       timerEl.className = `host-timer-display ${info.colorClass}`;
       timerEl.innerHTML = formatTime(info.secondsLeft);
 
