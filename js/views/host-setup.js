@@ -21,8 +21,8 @@ export function renderHostSetup() {
   el.innerHTML = `
     <div class="setup-container">
       <div class="setup-header">
-        <h1>⚙️ Misszió beállítások</h1>
-        <p class="setup-subtitle">Konfiguráld a missziót, majd indítsd az Irányítóközpontot!</p>
+        <h1>⚙️ Küldetés beállítások</h1>
+        <p class="setup-subtitle">Konfiguráld a küldetést, majd indítsd az Irányítóközpontot!</p>
       </div>
 
       <!-- Flották kártya -->
@@ -107,7 +107,7 @@ export function renderHostSetup() {
       <!-- Gombok -->
       <div class="setup-actions">
         <button class="btn btn-secondary" id="btn-setup-back">← Visszatérés</button>
-        <button class="btn btn-primary btn-lg" id="btn-create-lobby">🚀 Irányítóközpont indítása</button>
+        <button class="btn btn-primary btn-lg" id="btn-create-lobby">Irányítóközpont indítása</button>
       </div>
     </div>
   `;

@@ -6,32 +6,70 @@
 import { showView, showToast, state, startGameListener } from '../app.js';
 import { joinGame } from '../firebase-config.js';
 
+/** Inject randomly-placed star box-shadows on each visit */
+function _genStars() {
+  let s = document.getElementById('landing-stars-css');
+  if (!s) {
+    s = document.createElement('style');
+    s.id = 'landing-stars-css';
+    document.head.appendChild(s);
+  }
+  const W = Math.max(window.innerWidth, 1920);
+  const H = Math.max(window.innerHeight, 1080);
+  const ri = (n) => Math.floor(Math.random() * n);
+  const ra = (lo, hi) => (Math.random() * (hi - lo) + lo).toFixed(2);
+  const dots = (n, r, g, b) =>
+    Array.from({ length: n }, () =>
+      `${ri(W)}px ${ri(H)}px rgba(${r},${g},${b},${ra(0.4, 0.9)})`
+    ).join(',');
+  const bright = (n) =>
+    Array.from({ length: n }, () => {
+      const sp = ri(3) + 2;
+      return `${ri(W)}px ${ri(H)}px ${sp}px 1px rgba(255,255,255,${ra(0.7, 1)})`;
+    }).join(',');
+  s.textContent = [
+    `.sf1::before{box-shadow:${dots(260, 255, 255, 255)}}`,
+    `.sf1::after{box-shadow:${dots(90, 220, 180, 255)}}`,
+    `.sf2::before{box-shadow:${dots(220, 255, 255, 255)}}`,
+    `.sf2::after{box-shadow:${dots(70, 180, 220, 255)}}`,
+    `.sf3::before{box-shadow:${dots(320, 255, 255, 255)}}`,
+    `.sf3::after{box-shadow:${dots(60, 220, 180, 255)}}`,
+    `.sf4::before{box-shadow:${dots(150, 180, 220, 255)}}`,
+    `.sf4::after{box-shadow:${bright(22)}}`,
+  ].join('\n');
+}
+
 export function renderLanding() {
   const el = document.getElementById('view-landing');
 
   el.innerHTML = `
     <div class="star-field sf1" aria-hidden="true"></div>
     <div class="star-field sf2" aria-hidden="true"></div>
-    <div class="space-planet sp-1" aria-hidden="true"></div>
+    <div class="star-field sf3" aria-hidden="true"></div>
+    <div class="star-field sf4" aria-hidden="true"></div>
+
+    <img class="landing-obj obj-blackhole" src="img/black_hole.png" alt="">
+    <img class="landing-obj obj-station"   src="img/space_station.png" alt="">
+
     <h1>RMG ASTRO-ACTIVITY</h1>
     <p class="subtitle">Galaktikus csapatjáték</p>
 
     <div class="btn-group">
       <button class="btn btn-primary btn-lg" id="btn-new-game">
-        🛸 Új misszió indítása
+        Új küldetés
       </button>
       <button class="btn btn-secondary btn-lg" id="btn-join-game">
-        🔑 Belépés kóddal
+        Csatlakozás kóddal
       </button>
     </div>
 
     <!-- Csatlakozás overlay / modal -->
     <div class="overlay hidden" id="join-overlay">
       <div class="card modal">
-        <h2>Belépés a misszióba</h2>
+        <h2>Belépés a küldetésbe</h2>
 
         <div class="form-group">
-          <label for="join-code">Misszió-kód</label>
+          <label for="join-code">Küldetés-kód</label>
           <input
             id="join-code"
             type="text"
@@ -55,6 +93,8 @@ export function renderLanding() {
       </div>
     </div>
   `;
+
+  _genStars();
 
   // ── Eseménykezelők ──────────────────────────────────────────
 

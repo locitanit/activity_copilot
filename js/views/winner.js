@@ -42,7 +42,7 @@ export function renderWinner(game, appState) {
 
       <!-- Újraindítás -->
       <button class="btn btn-primary btn-lg" id="btn-new-game-winner">
-        🚀 Új misszió indítása
+        Új küldetés
       </button>
     </div>
   `;

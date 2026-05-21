@@ -55,7 +55,7 @@ function _renderLobby(el, game) {
         RMG Astro-Activity
       </div>
       <div style="font-size:1.1rem;color:#3d6a8a;margin-bottom:0.75rem">
-        Csatlakozz a misszióhoz a kóddal:
+        Csatlakozz a küldetéshez a kóddal:
       </div>
       <div style="font-size:5rem;font-weight:900;letter-spacing:0.7rem;
                   color:var(--primary);margin-bottom:2.5rem;
@@ -70,7 +70,7 @@ function _renderLobby(el, game) {
           </div>`).join('')}
       </div>
       <div style="margin-top:2.5rem;color:#3d6a8a;font-size:1rem">
-        🛸 Várakozás a misszió kezdetére...
+        Várakozás a küldetés kezdetére...
       </div>
     </div>
   `;

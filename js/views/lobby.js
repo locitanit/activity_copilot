@@ -36,7 +36,7 @@ function _renderHostLobby(el, game, playerEntries, teams, appState) {
   el.innerHTML = `
     <div class="lobby-container">
       <p class="text-muted text-center" style="margin-bottom:0.5rem;font-size:0.9rem">
-        Oszd meg ezt a misszió-kódot az asztronautákkal:
+        Oszd meg ezt a küldetés-kódot az asztronautákkal:
       </p>
       <div class="join-code-display">${appState.gameCode}</div>
 
@@ -98,7 +98,7 @@ function _renderHostLobby(el, game, playerEntries, teams, appState) {
       <div style="display:flex;gap:1rem">
         <button class="btn btn-primary btn-lg btn-full" id="btn-start-game"
           ${canStart ? '' : 'disabled'}>
-          Misszió indítása →
+          Küldetés indítása →
         </button>
       </div>
       ${!canStart
@@ -120,9 +120,9 @@ function _renderHostLobby(el, game, playerEntries, teams, appState) {
       await _handleStartGame(game, playerEntries, appState);
       // Ha sikeres, a Firebase listener automatikusan átváltja a nézetet
     } catch (err) {
-      showToast('❌ Hiba a misszió indításakor: ' + err.message);
+      showToast('❌ Hiba a küldetés indításakor: ' + err.message);
       const b = document.getElementById('btn-start-game');
-      if (b) { b.disabled = false; b.textContent = 'Misszió indítása →'; }
+      if (b) { b.disabled = false; b.textContent = 'Küldetés indítása →'; }
     }
   });
 }
@@ -205,7 +205,7 @@ function _renderPlayerLobby(el, game, playerEntries, teams, appState) {
 
   el.innerHTML = `
     <div class="lobby-container text-center">
-      <p class="text-muted" style="margin-bottom:0.5rem;font-size:0.9rem">Misszió-kód</p>
+      <p class="text-muted" style="margin-bottom:0.5rem;font-size:0.9rem">Küldetés-kód</p>
       <div class="join-code-display">${appState.gameCode}</div>
 
       ${isManual && myTeamIdx < 0

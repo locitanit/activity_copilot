@@ -201,7 +201,8 @@ input:focus, select:focus {
   position: relative;
   overflow: hidden;
   justify-content: flex-start;
-  padding-top: clamp(1.5rem, 16vh, 7rem);
+  padding-top: clamp(0.8rem, 8vh, 4rem);
+  padding-bottom: clamp(150px, 22vh, 220px);
   background:
     radial-gradient(ellipse 60% 55% at 15% 50%, rgba(0,40,120,.5) 0%, transparent 65%),
     radial-gradient(ellipse 55% 45% at 82% 28%, rgba(70,0,140,.35) 0%, transparent 55%),
@@ -320,6 +321,28 @@ input:focus, select:focus {
   65%       { opacity: .1; }
 }
 
+/* sf3 & sf4 – extra layers (box-shadows injected dynamically by JS) */
+.sf3::before {
+  width: 1px; height: 1px;
+  background: white;
+  animation: twinkle1 3.7s ease-in-out infinite -1.2s;
+}
+.sf3::after {
+  width: 2px; height: 2px;
+  background: rgba(220,180,255,.8);
+  animation: twinkle2 7.3s ease-in-out infinite -3.1s;
+}
+.sf4::before {
+  width: 1px; height: 1px;
+  background: rgba(180,230,255,.6);
+  animation: twinkle1 11s ease-in-out infinite -5s;
+}
+.sf4::after {
+  width: 3px; height: 3px;
+  background: rgba(255,255,255,1);
+  animation: twinkle2 9s ease-in-out infinite -1.5s;
+}
+
 /* Planets */
 .space-planet { position: absolute; border-radius: 50%; pointer-events: none; }
 .sp-1 {
@@ -347,8 +370,10 @@ input:focus, select:focus {
 #view-landing > * { position: relative; z-index: 1; }
 /* Decorative absolute elements must not be affected by the rule above */
 #view-landing .star-field,
-#view-landing .space-planet { position: absolute; z-index: 0; }
+#view-landing .space-planet,
+#view-landing .obj-station  { position: absolute; z-index: 0; }
 #view-landing h1 {
+  order: 1;
   font-size: 2.6rem;
   font-weight: 900;
   margin-bottom: 0.4rem;
@@ -359,14 +384,60 @@ input:focus, select:focus {
   text-align: center;
   padding-left: 0.2em;
 }
-#view-landing .subtitle { color: var(--primary); font-size: 1.05rem; margin-bottom: 5rem; letter-spacing: 0.06em; }
+#view-landing .subtitle { order: 2; color: var(--primary); font-size: 1.05rem; margin-bottom: 0.5rem; letter-spacing: 0.06em; }
+
+/* ── Landing image objects ────────────────────────────────── */
+.landing-obj {
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.obj-blackhole {
+  order: 3;
+  width: min(320px, 82vw, 44vh);
+  height: auto;
+  margin: clamp(0.3rem, 1.5vh, 1.2rem) auto;
+  opacity: 0.85;
+  filter: drop-shadow(0 0 55px rgba(100,0,200,.7));
+}
+.obj-station {
+  width: 200px; height: auto;
+  bottom: 8%; left: 8%;
+  opacity: 0.75;
+  animation: orbit-wobble 20s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(0,212,255,.45));
+}
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+@keyframes orbit-wobble {
+  0%   { transform: translate(0,     0)    rotate(0deg); }
+  25%  { transform: translate(12px, -10px) rotate(8deg); }
+  50%  { transform: translate(18px,  0)    rotate(0deg); }
+  75%  { transform: translate(12px,  10px) rotate(-8deg); }
+  100% { transform: translate(0,     0)    rotate(0deg); }
+}
 
 #view-landing .btn-group {
+  order: 4;
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
   width: 100%;
   max-width: 340px;
+}
+
+/* ── Landing: landscape / short-screen tweaks ────────────── */
+@media (orientation: landscape) and (max-height: 500px) {
+  #view-landing {
+    padding-top: 0.4rem;
+    padding-bottom: 90px;
+  }
+  #view-landing h1           { font-size: 1.5rem; margin-top: 0.1rem; margin-bottom: 0.1rem; }
+  #view-landing .subtitle    { font-size: 0.82rem; margin-bottom: 0.1rem; }
+  .obj-blackhole             { margin-top: 0.1rem; margin-bottom: 0.1rem; }
+  #view-landing .btn-group   { gap: 0.45rem; }
+  #view-landing .btn-lg      { padding: 0.55rem 1.5rem; font-size: 1rem; }
+  .obj-station               { width: 130px; bottom: 2%; }
 }
 
 /* Join overlay */
