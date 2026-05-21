@@ -112,8 +112,9 @@ export function renderPlayerGame(game, appState) {
   const players        = game.players     || {};
   const timerStartedAt = currentTurn.timerStartedAt || null;
   const timerElapsedMs = currentTurn.timerElapsedMs || 0;
-  const timeDilationActive = !!currentTurn.timeDilationActive;
-  const phaseInfo      = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive);
+  const timeDilationActive    = !!currentTurn.timeDilationActive;
+  const commDisruptionActive  = !!currentTurn.commDisruptionActive;
+  const phaseInfo      = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive, commDisruptionActive);
   const timerHasValue  = getElapsedMs(timerStartedAt, timerElapsedMs) > 0;
 
   const isActive      = currentTurn.activePlayerId === appState.playerId;
@@ -385,7 +386,7 @@ export function renderPlayerGame(game, appState) {
       const labelEl = document.getElementById('pg-label');
       if (!timerEl) { clearInterval(_timerInterval); _timerInterval = null; return; }
 
-      const info = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive);
+      const info = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive, commDisruptionActive);
       timerEl.className = `host-timer-display ${info.colorClass}`;
       timerEl.innerHTML = formatTime(info.secondsLeft);
 

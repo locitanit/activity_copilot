@@ -15,6 +15,7 @@ import { updateGameData } from '../firebase-config.js';
 import { startNextTurn }  from './turn-manager.js';
 import { getCurrentPhase } from './timer.js';
 import { addBoostToTeam, checkTraps } from './boosts.js';
+import { isAnomalyCell, triggerAnomalyEvent } from './anomaly.js';
 
 // ── Belső segéd ────────────────────────────────────────────────
 function _buildUpdatedPlayers(players, activePlayerId) {
@@ -133,9 +134,38 @@ export async function awardSharedPoints(gameCode, game, winnerTeamIndexes) {
       } catch (_) { /* silent */ }
     }
 
+    // ── Anomália ellenőrzés ──────────────────────────────────
+    // Rögzítjük, melyik csapatok léptek anomáliára a feladványból szerzett pont alapján
+    // (az anomáliák hatása előtt). Előrébb lévők kerülnek előre a sorban.
+    // Ha anomália hatására kerül valaki anomáliamezőre, az nem érvényesül.
+    const anomalyCandidates = normalizedWinnerIndexes
+      .filter(idx => isAnomalyCell(teams[idx].score, boardLength))
+      .sort((a, b) => teams[b].score - teams[a].score);
+    let postAnomalyTeams        = teams;
+    let commDisruptionTriggered = false;
+    for (const idx of anomalyCandidates) {
+      try {
+        const result = await triggerAnomalyEvent(
+          gameCode,
+          { ...game, teams: postAnomalyTeams },
+          idx
+        );
+        postAnomalyTeams = result.updatedTeams;
+        if (result.commDisruptionActive) commDisruptionTriggered = true;
+      } catch (_) { /* silent */ }
+    }
+
+    // Ha az anomália hatás miatt valaki elérte a célt
+    const anomalyHasWinner = postAnomalyTeams.some(t => t.score >= boardLength);
+    if (anomalyHasWinner) {
+      await updateGameData(gameCode, { status: 'finished', teams: postAnomalyTeams });
+      return;
+    }
+
     await startNextTurn(gameCode, {
       ...game,
-      teams,
+      teams:                postAnomalyTeams,
+      commDisruptionActive: game.commDisruptionActive || commDisruptionTriggered,
       turnHistory,
       players: _buildUpdatedPlayers(players, activePlayerId),
     });

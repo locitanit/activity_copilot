@@ -165,11 +165,12 @@ export function renderHostGame(game, appState) {
   const teams           = game.teams       || [];
   const timerStartedAt  = currentTurn.timerStartedAt || null;
   const timerElapsedMs  = currentTurn.timerElapsedMs || 0;
-  const timeDilationActive = !!currentTurn.timeDilationActive;
+  const timeDilationActive    = !!currentTurn.timeDilationActive;
+  const commDisruptionActive  = !!currentTurn.commDisruptionActive;
   const timerRunning    = !!timerStartedAt;
   const elapsedMs       = getElapsedMs(timerStartedAt, timerElapsedMs);
   const timerHasValue   = elapsedMs > 0;
-  const phaseInfo       = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive);
+  const phaseInfo       = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive, commDisruptionActive);
   const timerExpired    = phaseInfo.phase >= 4;
   const wordRevealed    = !!currentTurn.wordRevealed;
 
@@ -609,7 +610,7 @@ export function renderHostGame(game, appState) {
       const labelEl = document.getElementById('hg-label');
       if (!timerEl) { clearInterval(_timerInterval); _timerInterval = null; return; }
 
-      const info = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive);
+      const info = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive, commDisruptionActive);
       timerEl.className = `host-timer-display ${info.colorClass}`;
       timerEl.innerHTML = formatTime(info.secondsLeft);
 

@@ -6,6 +6,9 @@
  *   Fázis 2 – 30–60s (vagy 45-75s) : Adatbázis kapcsolat (Sárga)
  *   Fázis 3 – 60–90s (vagy 75-105s) : Nyílt frekvencia – RABOLHATÓ! (Piros)
  *   Fázis 4 –   >90s (vagy >105s) : Kapcsolat megszakadt!
+ *
+ * Kommunikációs zavar (commDisruptionActive):
+ *   Fázis 1 és 2 kihagyva – a teljes 90 mp (vagy 105 mp boost esetén) azonnal Fázis 3 (piros, rabolható)
  */
 
 const PHASE_DURATION = 30;  // Alap fázis-hossz (mp)
@@ -18,15 +21,24 @@ export function getElapsedMs(timerStartedAt, timerElapsedMs = 0) {
 
 /**
  * Az aktuális fázis és visszaszámlálás adatai.
- * @param {number|null} timerStartedAt - Unix timestamp ms-ben (Date.now())
- * @param {number} timerElapsedMs - Korabban felhalmozott eltelt ido ms-ben
- * @param {boolean} [timeDilationActive=false] - Időtágulás aktív-e
+ * @param {number|null} timerStartedAt    - Unix timestamp ms-ben (Date.now())
+ * @param {number}      timerElapsedMs    - Korabban felhalmozott eltelt ido ms-ben
+ * @param {boolean}    [timeDilationActive=false]    - Időtágulás aktív-e
+ * @param {boolean}    [commDisruptionActive=false]  - Komm. zavar: csak 30 mp Fázis 3
  * @returns {{ phase: 0|1|2|3|4, secondsLeft: number, label: string, colorClass: string }}
  */
-export function getPhaseInfo(timerStartedAt, timerElapsedMs = 0, timeDilationActive = false) {
-  const phase1End = timeDilationActive ? 45 : PHASE_DURATION;
-  const phase2End = phase1End + PHASE_DURATION;
-  const phase3End = phase2End + PHASE_DURATION;
+export function getPhaseInfo(timerStartedAt, timerElapsedMs = 0, timeDilationActive = false, commDisruptionActive = false) {
+  let phase1End, phase2End, phase3End;
+  if (commDisruptionActive) {
+    // Kommunikációs zavar: fázis 1 és 2 kihagyva, de a teljes kör ideje megmarad
+    phase1End = 0;
+    phase2End = 0;
+    phase3End = timeDilationActive ? 105 : 90;
+  } else {
+    phase1End = timeDilationActive ? 45 : PHASE_DURATION;
+    phase2End = phase1End + PHASE_DURATION;
+    phase3End = phase2End + PHASE_DURATION;
+  }
   const totalSeconds = phase3End;
 
   const elapsedMs = getElapsedMs(timerStartedAt, timerElapsedMs);
@@ -34,7 +46,9 @@ export function getPhaseInfo(timerStartedAt, timerElapsedMs = 0, timeDilationAct
     return {
       phase:       0,
       secondsLeft: totalSeconds,
-      label:       'Rendszer várakozik...',
+      label:       commDisruptionActive
+        ? '📡 Kommunikációs zavar – Nyílt Frekvencia indul!'
+        : 'Rendszer várakozik...',
       colorClass:  'phase-0',
     };
   }
@@ -58,14 +72,15 @@ export function getPhaseInfo(timerStartedAt, timerElapsedMs = 0, timeDilationAct
  * Az aktuális nyers fázis szám (boost szerzéshez).
  * @returns {number} 0-4
  */
-export function getCurrentPhase(timerStartedAt, timerElapsedMs = 0, timeDilationActive = false) {
-  return getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive).phase;
+export function getCurrentPhase(timerStartedAt, timerElapsedMs = 0, timeDilationActive = false, commDisruptionActive = false) {
+  return getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive, commDisruptionActive).phase;
 }
 
 /**
  * A teljes időtartam másodpercben (normál: 90, időtágulás: 105).
+ * Kommunikációs zavar esetén is megmarad a teljes kör ideje, csak azonnal Fázis 3-tól indul.
  */
-export function getTotalSeconds(timeDilationActive = false) {
+export function getTotalSeconds(timeDilationActive = false, commDisruptionActive = false) {
   return timeDilationActive ? 105 : 90;
 }
 

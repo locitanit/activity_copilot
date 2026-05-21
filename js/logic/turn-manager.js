@@ -134,15 +134,16 @@ export async function startNextTurn(gameCode, game) {
   const activePlayerId = selectNextPlayer(players, nextTeamIndex);
 
   const newCurrentTurn = {
-    word:               turnBase.word,
-    taskType:           turnBase.taskType,
-    points:             turnBase.points,
-    teamIndex:          nextTeamIndex,
-    activePlayerId:     activePlayerId || null,
-    timerStartedAt:     null,
-    wordRevealed:       false,
-    hyperdriveActive:   false,
-    timeDilationActive: false,
+    word:                 turnBase.word,
+    taskType:             turnBase.taskType,
+    points:               turnBase.points,
+    teamIndex:            nextTeamIndex,
+    activePlayerId:       activePlayerId || null,
+    timerStartedAt:       null,
+    wordRevealed:         false,
+    hyperdriveActive:     false,
+    timeDilationActive:   false,
+    commDisruptionActive: !!game.commDisruptionActive,
   };
 
   // upcomingTurns feltöltése max 3-ra
@@ -158,8 +159,11 @@ export async function startNextTurn(gameCode, game) {
   }
 
   await updateGameData(gameCode, {
-    currentTurn:   newCurrentTurn,
-    upcomingTurns: upcoming,
+    currentTurn:          newCurrentTurn,
+    upcomingTurns:        upcoming,
+    commDisruptionActive: false,
+    anomalyPending:       null,
+    anomalyEvent:         null,
   });
 }
 

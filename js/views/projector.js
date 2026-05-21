@@ -184,8 +184,9 @@ function _renderPlaying(el, game) {
   const players        = game.players     || {};
   const timerStartedAt = currentTurn.timerStartedAt || null;
   const timerElapsedMs = currentTurn.timerElapsedMs || 0;
-  const timeDilationActive = !!currentTurn.timeDilationActive;
-  const phaseInfo      = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive);
+  const timeDilationActive    = !!currentTurn.timeDilationActive;
+  const commDisruptionActive  = !!currentTurn.commDisruptionActive;
+  const phaseInfo      = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive, commDisruptionActive);
   const timerHasValue  = getElapsedMs(timerStartedAt, timerElapsedMs) > 0;
   const boardLength    = game.settings?.boardLength || 30;
   const gameCode       = state.gameCode || '';
@@ -226,9 +227,19 @@ function _renderPlaying(el, game) {
             ${formatTime(phaseInfo.secondsLeft)}
           </div>
           <div id="proj-label" class="phase-label ${phaseInfo.colorClass}">
-            ${timerStartedAt ? phaseInfo.label : (timerHasValue ? 'Adatátvitel szünetel' : 'Várakozás...')}
+            ${timerStartedAt ? phaseInfo.label : (timerHasValue ? 'Adatátvitel szünetel' : (commDisruptionActive ? '📡 Kommunikációs zavar' : 'Várakozás...'))}
           </div>
         </div>
+
+        ${game.anomalyEvent ? `
+        <div class="anomaly-event-box">
+          <div class="anomaly-event-emoji">${_esc(game.anomalyEvent.emoji)}</div>
+          <div class="anomaly-event-name">${_esc(game.anomalyEvent.name)}</div>
+          <div class="anomaly-event-desc">${_esc(game.anomalyEvent.specificDescription || '')}</div>
+          <div class="anomaly-event-team" style="color:${TEAM_COLORS[game.anomalyEvent.triggeredByTeamIndex] || '#888'}">
+            ${_esc((teams[game.anomalyEvent.triggeredByTeamIndex] || {}).name || '')}
+          </div>
+        </div>` : ''}
 
         <div class="turn-info">
           <div class="turn-team" style="color:${activeColor}">
@@ -256,7 +267,25 @@ function _renderPlaying(el, game) {
       </div>
     </div>
   `;
-
+  // ── Anomália pending overlay (projektor nézet) ────────────────────
+  if (game.anomalyPending) {
+    const p         = game.anomalyPending;
+    const pColor    = TEAM_COLORS[p.triggeredByTeamIndex] || '#888';
+    const pTeamName = _esc((teams[p.triggeredByTeamIndex] || {}).name || '');
+    const overlay   = document.createElement('div');
+    overlay.className = 'anomaly-modal-overlay';
+    overlay.innerHTML = `
+      <div class="anomaly-modal anomaly-modal--projector">
+        <div class="anomaly-modal-emoji">${_esc(p.emoji)}</div>
+        <div class="anomaly-modal-header">⚠ Űranomália észlelve</div>
+        <div class="anomaly-modal-title">${_esc(p.name)}</div>
+        <div class="anomaly-modal-team" style="color:${_esc(pColor)}">${pTeamName} flotta anomáliára lépett</div>
+        <div class="anomaly-modal-general">${_esc(p.generalDescription)}</div>
+        <div class="anomaly-modal-body">${_esc(p.specificDescription)}</div>
+      </div>
+    `;
+    el.appendChild(overlay);
+  }
   // ── Helyi timer interval (UI frissítés) ───────────────────
   if (timerStartedAt) {
     _timerInterval = setInterval(() => {
@@ -264,7 +293,7 @@ function _renderPlaying(el, game) {
       const labelEl = document.getElementById('proj-label');
       if (!timerEl) { clearInterval(_timerInterval); _timerInterval = null; return; }
 
-      const info = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive);
+      const info = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive, commDisruptionActive);
       timerEl.className = `timer-display ${info.colorClass}`;
       timerEl.innerHTML = formatTime(info.secondsLeft);
 
@@ -331,12 +360,14 @@ function _renderSnakeBoard(teams, boardLength, traps = {}) {
         continue;
       }
 
-      const isStart = cellNum === 0;
-      const isEnd   = cellNum === boardLength;
-      const tokens  = teamAt[cellNum] || [];
+      const isStart   = cellNum === 0;
+      const isEnd     = cellNum === boardLength;
+      const isAnomaly = cellNum % 5 === 0 && cellNum > 0 && cellNum < boardLength;
+      const tokens    = teamAt[cellNum] || [];
       let cls = 'snake-cell';
       if (isStart)       cls += ' snake-cell-start';
       else if (isEnd)    cls += ' snake-cell-end';
+      else if (isAnomaly) cls += ' snake-cell--anomaly';
       if (tokens.length) cls += ' has-token';
 
       // Célmező: flex-span a sor végéig
@@ -346,6 +377,7 @@ function _renderSnakeBoard(teams, boardLength, traps = {}) {
 
       html += `<div class="${cls}"${flexStyle}>`;
       if (traps[String(cellNum)] !== undefined) html += '<span class="trap-marker">🕳️</span>';
+      if (isAnomaly) html += '<span class="anomaly-marker">🌀</span>';
       if (isStart) {
         html += `<span class="snake-num">🚀</span><span class="snake-label">START</span>`;
       } else if (isEnd) {
