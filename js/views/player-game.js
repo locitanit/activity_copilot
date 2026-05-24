@@ -129,16 +129,56 @@ export function renderPlayerGame(game, appState) {
   const activeTeam  = teams[currentTurn.teamIndex] || {};
   const activeColor = TEAM_COLORS[currentTurn.teamIndex] || '#888';
 
+  // Flotta sorrendje
+  const myTeamPlayers  = myTeamIdx >= 0
+    ? Object.entries(players)
+        .filter(([, p]) => p.teamIndex === myTeamIdx)
+        .sort((a, b) => (a[1].turnCount || 0) - (b[1].turnCount || 0))
+    : [];
+  const _activeId      = currentTurn.activePlayerId || null;
+  const activeInMyTeam = _activeId && players[_activeId]?.teamIndex === myTeamIdx ? _activeId : null;
+  const nextInMyTeam   = !activeInMyTeam && myTeamPlayers.length > 0 ? myTeamPlayers[0][0] : null;
+
   // Háttérszín a csapat színe alapján
   el.style.background = `linear-gradient(180deg, ${myColor}EE 0%, ${myColor}BB 18%, ${myColor}50 50%, var(--bg) 78%)`;
 
   el.innerHTML = `
+    <!-- Játékkód badge (jobb felső sarok) -->
+    <div style="position:fixed;top:0.55rem;right:0.75rem;z-index:50;
+                background:rgba(2,5,16,0.85);border:1px solid var(--border);
+                border-radius:6px;padding:0.18rem 0.65rem;
+                font-size:0.72rem;letter-spacing:0.18em;
+                color:#3d6a8a;font-weight:700;pointer-events:none">
+      ${_esc(appState.gameCode || '')}
+    </div>
+
     <div class="player-game-container">
 
       <!-- Szerep badge -->
       <span class="player-role-badge ${role}">
         ${roleLabel}
       </span>
+
+      <!-- Flotta sorrendje -->
+      ${myTeamPlayers.length > 0 ? `
+      <div class="card" style="width:100%;text-align:left;padding:0.75rem 1rem">
+        <h3 style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;
+                   letter-spacing:0.08em;margin-bottom:0.5rem">Flotta sorrendje</h3>
+        ${myTeamPlayers.map(([pid, p]) => {
+          const isMe       = pid === appState.playerId;
+          const isActivePl = pid === activeInMyTeam;
+          const isNextPl   = pid === nextInMyTeam;
+          return `
+            <div style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0;
+                        ${isMe ? 'font-weight:700' : ''}">
+              <span style="width:1.3rem;text-align:center;font-size:0.9rem;flex-shrink:0">
+                ${isActivePl ? '🚀' : isNextPl ? '▶' : ''}
+              </span>
+              <span style="font-size:0.88rem">${_esc(p.name)}</span>
+              ${isMe ? '<span style="font-size:0.7rem;color:var(--text-muted);margin-left:0.4rem">(te)</span>' : ''}
+            </div>`;
+        }).join('')}
+      </div>` : ''}
 
       <!-- Aktív csapat / feladat fejléc -->
       <div class="card text-center" style="width:100%;border-color:${isActive ? myColor : activeColor}">
