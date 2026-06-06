@@ -119,9 +119,7 @@
 
     /* Holographic panel – frosted glass + faint scanlines */
     .holographic-panel {
-      background: rgba(2, 5, 16, 0.7);
-      backdrop-filter: blur(15px);
-      -webkit-backdrop-filter: blur(15px);
+      background: rgba(2, 5, 16, 0.78);
       border: 1px solid rgba(60, 215, 255, 0.2);
       position: relative;
       overflow: hidden;
@@ -137,9 +135,7 @@
     }
 
     .glass-panel {
-      background-color: rgba(2, 5, 16, 0.7);
-      backdrop-filter: blur(15px);
-      -webkit-backdrop-filter: blur(15px);
+      background-color: rgba(2, 5, 16, 0.78);
     }
 
     .neon-glow-primary:hover { box-shadow: 0 0 15px rgba(0, 212, 255, 0.6); }
@@ -175,8 +171,10 @@
       min-height: 100vh;
     }
 
-    /* Global starfield sits behind the app */
-    #bg-stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    /* Global starfield sits behind the app. Solid dark base so the theme
+       never depends on the WebGL canvas covering the viewport. As a fixed
+       layer it also keeps the backdrop dark while the page scrolls. */
+    #bg-stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: #020510; }
     #app { position: relative; z-index: 1; }
 
     /* ── Projector (Kivetítő) HUD ─────────────────────────────── */
@@ -281,7 +279,9 @@
       syncSize();
 
       const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-      if (!gl) return;
+      if (!gl) { canvas.style.display = 'none'; return; }
+      // If the GPU context is lost, hide the canvas so the dark #bg-stars shows.
+      canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); canvas.style.display = 'none'; }, false);
       const vs = `attribute vec2 a_position; void main(){ gl_Position = vec4(a_position,0.0,1.0); }`;
       const fs = `precision highp float;
         uniform float u_time; uniform vec2 u_resolution;
