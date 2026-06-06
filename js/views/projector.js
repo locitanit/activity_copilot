@@ -2,20 +2,24 @@
  * views/projector.js – View 4/A: Kivetítő (STAR COMMAND HUD)
  * Publikus nézet az osztályterem falára vetítve. SOHA NEM mutatja a titkos szót.
  * Megnyitja: host via window.open('?role=projector&room=KÓD').
- * Holografikus HUD dizájn (Tailwind + Material Symbols).
+ *
+ * A csillagtérkép (board) procedurálisan, a beállított boardLength alapján
+ * skálázódik: a csomópontokat JS pozicionálja a panel méretéhez igazítva.
  */
 
 import { state }                    from '../app.js';
-import { getElapsedMs, getPhaseInfo, getTotalSeconds, formatTime } from '../logic/timer.js';
+import { getElapsedMs, getPhaseInfo, formatTime } from '../logic/timer.js';
 
 const TEAM_COLORS = ['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899'];
 const PHASE_HEX = { 'phase-0': '#bbc9cf', 'phase-1': '#00e676', 'phase-2': '#ffd600', 'phase-3': '#ff1744' };
 
 let _timerInterval = null;
+let _boardResizeObs = null;
 
 // ── Fő export ─────────────────────────────────────────────────
 export function renderProjector(game) {
   if (_timerInterval) { clearInterval(_timerInterval); _timerInterval = null; }
+  if (_boardResizeObs) { _boardResizeObs.disconnect(); _boardResizeObs = null; }
 
   const el = document.getElementById('view-projector');
 
@@ -34,10 +38,10 @@ export function renderProjector(game) {
 // ── HUD sarokkeret + globális díszek ──────────────────────────
 function _hudOrnaments() {
   return `
-    <div class="fixed top-4 left-4 w-16 h-16 border-t-4 border-l-4 border-primary/40 z-50 pointer-events-none"></div>
-    <div class="fixed top-4 right-4 w-16 h-16 border-t-4 border-r-4 border-primary/40 z-50 pointer-events-none"></div>
-    <div class="fixed bottom-4 left-4 w-16 h-16 border-b-4 border-l-4 border-primary/40 z-50 pointer-events-none"></div>
-    <div class="fixed bottom-4 right-4 w-16 h-16 border-b-4 border-r-4 border-primary/40 z-50 pointer-events-none"></div>`;
+    <div class="fixed top-4 left-4 w-16 h-16 border-t-4 border-l-4 border-primary/40 z-50 pointer-events-none rounded-tl-xl"></div>
+    <div class="fixed top-4 right-4 w-16 h-16 border-t-4 border-r-4 border-primary/40 z-50 pointer-events-none rounded-tr-xl"></div>
+    <div class="fixed bottom-4 left-4 w-16 h-16 border-b-4 border-l-4 border-primary/40 z-50 pointer-events-none rounded-bl-xl"></div>
+    <div class="fixed bottom-4 right-4 w-16 h-16 border-b-4 border-r-4 border-primary/40 z-50 pointer-events-none rounded-br-xl"></div>`;
 }
 
 // ── Lobby nézet ───────────────────────────────────────────────
@@ -173,9 +177,7 @@ function _renderPlaying(el, game) {
   const commDisruptionActive  = !!currentTurn.commDisruptionActive;
   const phaseInfo      = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive, commDisruptionActive);
   const timerHasValue  = getElapsedMs(timerStartedAt, timerElapsedMs) > 0;
-  const totalSeconds   = getTotalSeconds(timeDilationActive, commDisruptionActive) || 1;
   const timerColor     = PHASE_HEX[phaseInfo.colorClass] || '#feb528';
-  const barPct         = Math.max(0, Math.min(100, (phaseInfo.secondsLeft / totalSeconds) * 100));
   const boardLength    = game.settings?.boardLength || 30;
   const gameCode       = state.gameCode || '';
 
@@ -186,9 +188,11 @@ function _renderPlaying(el, game) {
   const labelText = timerStartedAt ? phaseInfo.label
     : (timerHasValue ? 'Adatátvitel szünetel' : (commDisruptionActive ? '📡 Kommunikációs zavar' : 'Várakozás...'));
 
+  const hatch = "url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPjxwYXRoIGQ9Ik0wIDBMOCA4TTAgOEw4IDAiIHN0cm9rZT0iIzM2NDE0ZSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9zdmc+')";
+
   el.innerHTML = `
     ${_hudOrnaments()}
-    <div class="h-screen flex flex-col p-6 pb-0 gap-5">
+    <div class="h-screen flex flex-col p-6 gap-5">
 
       <!-- Header: score badges + code -->
       <header class="flex-shrink-0 flex justify-between items-start gap-4">
@@ -202,7 +206,7 @@ function _renderPlaying(el, game) {
               </div>
             </div>`).join('')}
         </div>
-        <div class="glass-panel px-6 py-3 flex flex-col items-end flex-shrink-0">
+        <div class="glass-panel px-6 py-3 flex flex-col items-end flex-shrink-0 border-r-4 border-primary">
           <div class="font-code-sm text-code-sm text-primary/60 uppercase tracking-widest">SESSION ID</div>
           <div class="font-display-md text-display-md text-primary tracking-[0.2em] drop-shadow-[0_0_10px_rgba(0,212,255,0.6)]">${_esc(gameCode)}</div>
         </div>
@@ -211,46 +215,42 @@ function _renderPlaying(el, game) {
       <!-- Main split: board + sidebar -->
       <div class="flex-1 flex gap-6 min-h-0">
 
-        <!-- Board -->
-        <div class="flex-1 glass-panel relative p-6 flex items-center justify-center overflow-hidden">
+        <!-- Board (immersive star chart) -->
+        <div class="flex-1 glass-panel relative p-6 overflow-hidden">
           <div class="proj-hud-corner proj-hud-corner-tl"></div>
           <div class="proj-hud-corner proj-hud-corner-tr"></div>
           <div class="proj-hud-corner proj-hud-corner-bl"></div>
           <div class="proj-hud-corner proj-hud-corner-br"></div>
-          ${_renderSnakeBoard(teams, boardLength, game.traps || {})}
+          <div class="absolute inset-0 nebula-bg"></div>
+          <div id="proj-board-area" class="relative w-full h-full"></div>
         </div>
 
         <!-- Sidebar -->
-        <div class="w-80 flex-shrink-0 flex flex-col gap-5">
+        <div class="w-80 flex-shrink-0 flex flex-col gap-5 z-20 min-h-0">
 
-          <!-- Timer -->
-          <div class="glass-panel p-6 flex flex-col items-center justify-center border-t-4 relative overflow-hidden" style="border-color:${timerColor}">
-            <div id="proj-label" class="font-code-sm text-code-sm uppercase tracking-[0.2em] mb-2 ${timerStartedAt ? 'animate-pulse' : ''}" style="color:${timerColor}">${_esc(labelText)}</div>
-            <div id="proj-timer" class="font-display-lg text-[64px] leading-none tracking-widest font-bold" style="color:${timerColor};text-shadow:0 0 15px ${timerColor}99">${formatTime(phaseInfo.secondsLeft)}</div>
-            <div class="w-full h-2 mt-4 bg-surface-container rounded-sm overflow-hidden">
-              <div id="proj-bar" class="h-full rounded-sm" style="width:${barPct}%;background:${timerColor};box-shadow:0 0 6px ${timerColor};transition:width 1s linear"></div>
+          <!-- Astrolabe timer -->
+          <div id="proj-timer-panel" class="glass-panel p-4 flex items-center justify-center relative overflow-hidden h-[210px] shrink-0 border-t-4" style="border-color:${timerColor}">
+            <div class="absolute inset-0" style="background:${timerColor}0d"></div>
+            <div class="astrolabe opacity-80">
+              <div class="astrolabe-ring astrolabe-ring-1 proj-spin-slow"></div>
+              <div class="astrolabe-ring astrolabe-ring-2 proj-spin-rev-slow"></div>
+              <div class="astrolabe-ring astrolabe-ring-3 proj-spin-slow" style="animation-duration:8s"></div>
+            </div>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <div id="proj-label" class="font-code-sm text-code-sm uppercase tracking-[0.2em] mb-1 bg-background/80 px-2 rounded ${timerStartedAt ? 'animate-pulse' : ''}" style="color:${timerColor}">${_esc(labelText)}</div>
+              <div id="proj-timer" class="font-display-lg text-[48px] leading-none tracking-widest font-bold" style="color:${timerColor};text-shadow:0 0 15px ${timerColor}cc">${formatTime(phaseInfo.secondsLeft)}</div>
             </div>
           </div>
 
-          ${game.anomalyEvent ? `
-          <div class="glass-panel p-5 text-center border border-error/40">
-            <div class="text-4xl mb-1">${_esc(game.anomalyEvent.emoji)}</div>
-            <div class="font-headline-lg-mobile text-headline-lg-mobile text-error">${_esc(game.anomalyEvent.name)}</div>
-            <div class="font-body-md text-body-md text-on-surface-variant mt-1">${_esc(game.anomalyEvent.specificDescription || '')}</div>
-            <div class="font-label-md text-label-md mt-1" style="color:${TEAM_COLORS[game.anomalyEvent.triggeredByTeamIndex] || '#888'}">
-              ${_esc((teams[game.anomalyEvent.triggeredByTeamIndex] || {}).name || '')}
-            </div>
-          </div>` : ''}
-
           <!-- Turn info -->
-          <div class="glass-panel p-6 flex-1 flex flex-col border-l-4" style="border-color:${activeColor}">
-            <div class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest mb-5 pb-2 border-b border-primary/20 flex items-center gap-2">
+          <div class="glass-panel p-5 flex flex-col border-l-4 shrink-0" style="border-color:${activeColor}">
+            <div class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest mb-4 pb-2 border-b border-primary/20 flex items-center gap-2">
               <span class="material-symbols-outlined text-primary text-sm">radar</span> Jelenlegi forduló
             </div>
-            <div class="flex flex-col gap-5">
+            <div class="flex flex-col gap-4">
               <div>
                 <div class="font-code-sm text-code-sm text-primary/60 uppercase mb-1">Aktív flotta</div>
-                <div class="font-display-md text-display-md uppercase" style="color:${activeColor};text-shadow:0 0 8px ${activeColor}">${_esc(activeTeam.name || '–')}</div>
+                <div class="font-headline-lg text-headline-lg uppercase" style="color:${activeColor};text-shadow:0 0 8px ${activeColor}">${_esc(activeTeam.name || '–')}</div>
               </div>
               ${activePlayer ? `
               <div>
@@ -259,7 +259,7 @@ function _renderPlaying(el, game) {
                   <span class="material-symbols-outlined text-primary/70">person</span> ${_esc(activePlayer)}
                 </div>
               </div>` : ''}
-              <div class="mt-auto bg-surface-container/50 p-4 rounded border border-primary/10">
+              <div class="bg-surface-container/50 p-4 rounded-lg border border-primary/10">
                 <div class="font-code-sm text-code-sm text-primary/60 uppercase mb-1">Feladat típusa</div>
                 ${currentTurn.taskType && currentTurn.wordRevealed
                   ? `<div class="flex justify-between items-center">
@@ -267,8 +267,9 @@ function _renderPlaying(el, game) {
                        <div class="px-2 py-1 bg-primary/10 rounded text-primary text-sm font-bold border border-primary/30">${currentTurn.points ?? '–'} FÉNYÉV</div>
                      </div>
                      <!-- A titkos szó SOSEM jelenik meg -->
-                     <div class="mt-4 h-8 bg-surface-container-highest rounded flex items-center justify-center opacity-50">
-                       <span class="material-symbols-outlined text-outline-variant text-sm">visibility_off</span>
+                     <div class="mt-4 h-10 bg-surface-container-highest rounded-lg flex items-center justify-center opacity-50 relative overflow-hidden border border-outline-variant/30">
+                       <div class="absolute inset-0" style="background-image:${hatch}"></div>
+                       <span class="material-symbols-outlined text-outline-variant z-10 text-sm">visibility_off</span>
                      </div>`
                   : currentTurn.word && !currentTurn.wordRevealed
                     ? `<div class="font-body-lg text-body-lg text-primary/70 mt-1">Adatcsomag betöltése...</div>`
@@ -277,21 +278,44 @@ function _renderPlaying(el, game) {
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Ticker -->
-      ${Array.isArray(game.boostLog) && game.boostLog.length > 0 ? `
-      <div class="h-12 glass-panel flex items-center overflow-hidden border-t border-b border-primary/20 relative -mx-6 w-screen flex-shrink-0">
-        <div class="px-4 bg-primary text-on-primary font-label-md text-label-md flex items-center h-full shadow-[4px_0_10px_rgba(0,0,0,0.5)] whitespace-nowrap tracking-wider z-10">BOOST LOG</div>
-        <div class="flex-1 overflow-hidden h-full relative">
-          <div class="absolute inset-0 flex items-center whitespace-nowrap animate-marquee font-code-sm text-code-sm">
-            ${[...game.boostLog].reverse().slice(0, 8).map(e => `<span class="mx-8 text-primary/80">◆ ${_esc(e.message || '')}</span>`).join('')}
+          ${game.anomalyEvent ? `
+          <div class="glass-panel p-4 text-center border border-error/40 shrink-0">
+            <div class="text-3xl mb-1">${_esc(game.anomalyEvent.emoji)}</div>
+            <div class="font-headline-lg-mobile text-headline-lg-mobile text-error">${_esc(game.anomalyEvent.name)}</div>
+            <div class="font-body-md text-body-md text-on-surface-variant mt-1">${_esc(game.anomalyEvent.specificDescription || '')}</div>
+          </div>` : ''}
+
+          <!-- Event log -->
+          <div class="glass-panel p-4 flex-1 flex flex-col border-t-4 border-primary min-h-0">
+            <div class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest pb-2 border-b border-primary/20 flex items-center gap-2 shrink-0">
+              <span class="material-symbols-outlined text-primary text-sm">history</span> Eseménynapló
+            </div>
+            <div class="flex-1 overflow-y-auto mt-3 flex flex-col gap-2 font-code-sm text-code-sm text-primary/80 pr-2">
+              ${Array.isArray(game.boostLog) && game.boostLog.length > 0
+                ? [...game.boostLog].reverse().slice(0, 14).map(e => `
+                    <div class="flex items-start gap-2">
+                      <div class="w-1.5 h-1.5 mt-1.5 rounded-full bg-primary shrink-0 shadow-[0_0_5px_#00d4ff]"></div>
+                      <div>${_esc(e.message || '')}</div>
+                    </div>`).join('')
+                : '<div class="text-on-surface-variant">Nincs esemény még.</div>'}
+            </div>
           </div>
         </div>
-      </div>` : '<div class="h-6 flex-shrink-0"></div>'}
+      </div>
     </div>
   `;
+
+  // ── Csillagtérkép kirajzolása (mérés + pozicionálás) ─────────
+  const boardArea = document.getElementById('proj-board-area');
+  if (boardArea) {
+    const doLayout = () => _layoutStarChart(boardArea, teams, boardLength, game.traps || {});
+    doLayout();
+    if (typeof ResizeObserver !== 'undefined') {
+      _boardResizeObs = new ResizeObserver(() => doLayout());
+      _boardResizeObs.observe(boardArea);
+    }
+  }
 
   // ── Anomália pending overlay (a meglévő modal stílus) ──────────
   if (game.anomalyPending) {
@@ -318,85 +342,146 @@ function _renderPlaying(el, game) {
     _timerInterval = setInterval(() => {
       const timerEl = document.getElementById('proj-timer');
       const labelEl = document.getElementById('proj-label');
-      const barEl   = document.getElementById('proj-bar');
       if (!timerEl) { clearInterval(_timerInterval); _timerInterval = null; return; }
 
       const info = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive, commDisruptionActive);
       const col  = PHASE_HEX[info.colorClass] || '#feb528';
       timerEl.innerHTML = formatTime(info.secondsLeft);
       timerEl.style.color = col;
-      timerEl.style.textShadow = `0 0 15px ${col}99`;
+      timerEl.style.textShadow = `0 0 15px ${col}cc`;
       if (labelEl) { labelEl.textContent = info.label; labelEl.style.color = col; }
-      if (barEl) {
-        barEl.style.width = Math.max(0, Math.min(100, (info.secondsLeft / totalSeconds) * 100)) + '%';
-        barEl.style.background = col;
-        barEl.style.boxShadow = `0 0 6px ${col}`;
-      }
+      const panelEl = document.getElementById('proj-timer-panel');
+      if (panelEl) panelEl.style.borderColor = col;
       if (info.phase >= 4) { clearInterval(_timerInterval); _timerInterval = null; }
     }, 1000);
   }
 }
 
-// ── Kígyótábla renderelés (hex cellák) ────────────────────────
-function _renderSnakeBoard(teams, boardLength, traps = {}) {
-  let cols;
-  if      (boardLength <= 12) cols = 4;
-  else if (boardLength <= 20) cols = 5;
-  else if (boardLength <= 32) cols = 6;
-  else if (boardLength <= 49) cols = 7;
-  else                        cols = 8;
+// ── Csillagtérkép layout (skálázódik a boardLength szerint) ────
+function _layoutStarChart(boardArea, teams, boardLength, traps) {
+  const rect = boardArea.getBoundingClientRect();
+  const W = rect.width, H = rect.height;
+  if (W < 20 || H < 20) return;
 
+  const N = boardLength + 1; // cellák: 0 (START) .. boardLength (CÉL)
+
+  // Oszlopszám a panel képarányához igazítva, szerpentin elrendezés
+  let cols = Math.max(2, Math.round(Math.sqrt(N * (W / H))));
+  cols = Math.max(2, Math.min(cols, N));
+  const rows = Math.ceil(N / cols);
+
+  const padX = W * 0.06, padY = H * 0.10;
+  const cellW = (W - 2 * padX) / cols;
+  const cellH = (H - 2 * padY) / rows;
+
+  const baseNode = Math.max(11, Math.min(52, Math.min(cellW, cellH) * 0.46));
+  const tokenD = Math.max(13, Math.min(28, baseNode * 0.55));
+  const numF   = Math.max(8,  Math.min(13, baseNode * 0.32));
+  const markF  = Math.max(11, Math.min(22, baseNode * 0.5));
+  const enableFloat = baseNode >= 26;
+  // Sűrű táblán csak az 5-ös mezőkre + start/cél írunk számot
+  const showAllNums = baseNode >= 20;
+
+  // Determinisztikus ál-véletlen: a tábla "szabálytalan" csillagtérkép-alakja
+  // stabil egy adott játékkódra (frissítéskor csak a tokenek mozognak).
+  const seed = state.gameCode || 'RMG';
+  const rnd = (i, salt) => {
+    const s = seed + ':' + i + ':' + salt;
+    let h = 2166136261;
+    for (let k = 0; k < s.length; k++) { h ^= s.charCodeAt(k); h = Math.imul(h, 16777619); }
+    h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); h ^= h >>> 15;
+    return ((h >>> 0) % 100000) / 100000;
+  };
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  // Csapatok a mezőkön
   const teamAt = {};
   teams.forEach((t, i) => {
-    const cellNum = Math.min(Math.max(t.score, 0), boardLength);
-    if (!teamAt[cellNum]) teamAt[cellNum] = [];
-    teamAt[cellNum].push(i);
+    const c = Math.min(Math.max(t.score, 0), boardLength);
+    (teamAt[c] = teamAt[c] || []).push(i);
   });
 
-  const totalRows = Math.ceil((boardLength + 1) / cols);
-  let html = '<div class="flex flex-col gap-2 items-stretch">';
-
-  for (let d = 0; d < totalRows; d++) {
-    const r = totalRows - 1 - d;       // board row (0 = start at bottom)
-    const ltr = r % 2 === 0;           // even rows left→right
-    const align = d % 2 === 0 ? 'justify-end pr-6' : 'justify-start pl-6';
-    html += `<div class="flex gap-1.5 ${align}">`;
-    for (let c = 0; c < cols; c++) {
-      const cellNum = ltr ? r * cols + c : r * cols + (cols - 1 - c);
-      if (cellNum > boardLength) continue;
-
-      const isStart   = cellNum === 0;
-      const isEnd     = cellNum === boardLength;
-      const isAnomaly = cellNum % 5 === 0 && cellNum > 0 && cellNum < boardLength;
-      const isTrap    = traps[String(cellNum)] !== undefined;
-      const tokens    = teamAt[cellNum] || [];
-
-      let cls = 'proj-hex';
-      if (isStart)        cls += ' proj-hex--start';
-      else if (isEnd)     cls += ' proj-hex--end';
-      else if (isAnomaly) cls += ' proj-hex--anomaly';
-      else if (isTrap)    cls += ' proj-hex--trap';
-
-      html += `<div class="${cls}">`;
-      if (isTrap)    html += '<span class="proj-hex-mark">🕳️</span>';
-      if (isAnomaly) html += '<span class="proj-hex-mark">🌀</span>';
-      if (isStart)      html += '<span class="proj-hex-num">🚀</span>';
-      else if (isEnd)   html += '<span class="proj-hex-num">⭐</span>';
-      else              html += `<span class="proj-hex-num">${cellNum}</span>`;
-      if (tokens.length) {
-        html += '<div class="proj-token-row">';
-        for (const ti of tokens) {
-          const initial = teams[ti].name.charAt(0).toUpperCase();
-          html += `<div class="proj-token" style="background:${TEAM_COLORS[ti]};color:${TEAM_COLORS[ti]}" title="${_esc(teams[ti].name)}"><span style="color:#fff">${initial}</span></div>`;
-        }
-        html += '</div>';
-      }
-      html += '</div>';
-    }
-    html += '</div>';
+  // Csomópont-középpontok + méretek (jitterrel – szabálytalan elrendezés)
+  const jit = 0.5;
+  const cx = new Array(N), cy = new Array(N), nd = new Array(N);
+  for (let i = 0; i < N; i++) {
+    const rowFromBottom = Math.floor(i / cols);
+    let col = i % cols;
+    if (rowFromBottom % 2 === 1) col = cols - 1 - col; // szerpentin alap
+    const bx = padX + (col + 0.5) * cellW;
+    const by = H - (padY + (rowFromBottom + 0.5) * cellH);
+    cx[i] = clamp(bx + (rnd(i, 'x') - 0.5) * cellW * jit, padX * 0.5, W - padX * 0.5);
+    cy[i] = clamp(by + (rnd(i, 'y') - 0.5) * cellH * jit, padY * 0.5, H - padY * 0.5);
+    let scale = 0.78 + rnd(i, 's') * 0.5;          // 0.78 .. 1.28 (változó csillagméret)
+    if (i === boardLength) scale = Math.max(scale, 1.25); // a cél nagyobb
+    nd[i] = baseNode * scale;
   }
-  html += '</div>';
-  return html;
+
+  let html = '';
+
+  // Összekötő vonalak (egymást követő csomópontok között)
+  for (let i = 1; i < N; i++) {
+    const dx = cx[i] - cx[i - 1], dy = cy[i] - cy[i - 1];
+    const len = Math.hypot(dx, dy);
+    const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+    html += `<div class="constellation-line" style="left:${cx[i-1].toFixed(1)}px;top:${cy[i-1].toFixed(1)}px;width:${len.toFixed(1)}px;transform:rotate(${ang.toFixed(2)}deg)"></div>`;
+  }
+
+  // Csomópontok
+  for (let i = 0; i < N; i++) {
+    const isStart   = i === 0;
+    const isEnd     = i === boardLength;
+    const isAnomaly = i % 5 === 0 && i > 0 && i < boardLength;
+    const isTrap    = traps[String(i)] !== undefined;
+    const d = nd[i];
+
+    let cls = 'stellar-node';
+    if (isEnd) cls += ' active';
+    else if (isAnomaly) cls += ' hazard';
+    else if (isTrap) cls += ' special';
+    if (enableFloat) cls += ' proj-float';
+    const delay = enableFloat ? `animation-delay:${(rnd(i, 'd') * -6).toFixed(1)}s;` : '';
+
+    const left = (cx[i] - d / 2).toFixed(1);
+    const top  = (cy[i] - d / 2).toFixed(1);
+    const iD   = Math.max(5, Math.min(16, d * 0.28)) * (isEnd ? 1.4 : 1);
+
+    const inner = `<div class="node-inner" style="width:${iD.toFixed(1)}px;height:${iD.toFixed(1)}px"></div>`;
+
+    // Marker (anomália / csapda / cél) a csomópont fölött
+    const mEmoji = isTrap ? '🕳️' : isAnomaly ? '🌀' : isEnd ? '⭐' : '';
+    const marker = mEmoji
+      ? `<span class="proj-node-label" style="top:${(-markF - 2).toFixed(0)}px;font-size:${markF.toFixed(0)}px">${mEmoji}</span>`
+      : '';
+
+    // Szám a csomópont alatt
+    const wantNum = showAllNums || isStart || isEnd || i % 5 === 0;
+    const numColor = isEnd ? '#a8e8ff' : isAnomaly ? 'rgba(255,180,171,0.7)' : isTrap ? 'rgba(254,181,40,0.75)' : 'rgba(168,232,255,0.55)';
+    const numEl = wantNum
+      ? `<span class="proj-node-label" style="top:${(d + 2).toFixed(0)}px;font-size:${(isEnd ? numF * 1.3 : numF).toFixed(0)}px;font-weight:700;color:${numColor}">${i}</span>`
+      : '';
+
+    // START / CÉL feliratok
+    let tag = '';
+    if (isStart) tag = `<span class="proj-node-label" style="top:${(-numF - 10).toFixed(0)}px;font-size:${numF.toFixed(0)}px;letter-spacing:0.1em;color:rgba(168,232,255,0.6)">START</span>`;
+    else if (isEnd) tag = `<span class="proj-node-label" style="top:${(d + numF * 1.3 + 6).toFixed(0)}px;font-size:${numF.toFixed(0)}px;letter-spacing:0.1em;color:rgba(168,232,255,0.6)">CÉL</span>`;
+
+    // Tokenek a csomópont közepén
+    let tokens = '';
+    const here = teamAt[i] || [];
+    if (here.length) {
+      tokens = `<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;gap:2px;z-index:10">`
+        + here.map(ti => {
+            const initial = teams[ti].name.charAt(0).toUpperCase();
+            return `<div class="proj-token" style="position:static;width:${tokenD.toFixed(0)}px;height:${tokenD.toFixed(0)}px;font-size:${(tokenD*0.5).toFixed(0)}px;background:${TEAM_COLORS[ti]};color:${TEAM_COLORS[ti]}" title="${_esc(teams[ti].name)}"><span style="color:#fff">${initial}</span></div>`;
+          }).join('')
+        + `</div>`;
+    }
+
+    html += `<div class="${cls}" style="left:${left}px;top:${top}px;width:${d.toFixed(1)}px;height:${d.toFixed(1)}px;${delay}">${inner}${marker}${numEl}${tag}${tokens}</div>`;
+  }
+
+  boardArea.innerHTML = html;
 }
 
 // ── XSS védelem ───────────────────────────────────────────────

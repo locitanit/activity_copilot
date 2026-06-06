@@ -188,36 +188,45 @@
       min-height: unset;
       overflow: hidden;
     }
-    @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-    .animate-marquee { animation: marquee 22s linear infinite; }
-
     .proj-hud-corner { position: absolute; width: 24px; height: 24px; border-color: rgba(0,212,255,0.8); border-style: solid; }
-    .proj-hud-corner-tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
-    .proj-hud-corner-tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
-    .proj-hud-corner-bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
-    .proj-hud-corner-br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+    .proj-hud-corner-tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; border-radius: 12px 0 0 0; }
+    .proj-hud-corner-tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; border-radius: 0 12px 0 0; }
+    .proj-hud-corner-bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; border-radius: 0 0 0 12px; }
+    .proj-hud-corner-br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; border-radius: 0 0 12px 0; }
 
-    .proj-hex {
-      position: relative;
+    /* ── Star-chart board (nodes positioned procedurally by JS) ── */
+    .nebula-bg { background: radial-gradient(circle at 50% 50%, rgba(0,212,255,0.10) 0%, rgba(28,77,108,0.05) 40%, transparent 80%); filter: blur(20px); }
+    .stellar-node {
+      position: absolute;
+      border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      width: 58px; height: 58px; flex-shrink: 0;
-      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-      background: rgba(0,212,255,0.10);
+      background: radial-gradient(circle at center, rgba(0,212,255,0.2) 0%, transparent 70%);
+      border: 1px solid rgba(0,212,255,0.3);
+      box-shadow: 0 0 15px rgba(0,212,255,0.1);
     }
-    .proj-hex--start   { background: rgba(0,212,255,0.05); }
-    .proj-hex--end     { background: rgba(0,212,255,0.22); }
-    .proj-hex--anomaly { background: rgba(255,75,75,0.16); }
-    .proj-hex--trap    { background: rgba(254,181,40,0.16); }
-    .proj-hex-num { font-weight: 700; font-size: 0.95rem; color: #bbc9cf; }
-    .proj-hex--end .proj-hex-num, .proj-hex--start .proj-hex-num { color: #a8e8ff; }
-    .proj-hex-mark { position: absolute; top: 5px; font-size: 0.7rem; }
-    .proj-token-row { position: absolute; bottom: 3px; display: flex; gap: 2px; justify-content: center; }
-    .proj-token {
-      width: 21px; height: 21px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: bold;
-      box-shadow: 0 0 10px currentColor; border: 1px solid rgba(255,255,255,0.5);
-    }
+    .stellar-node.active  { background: radial-gradient(circle at center, rgba(0,212,255,0.4) 0%, transparent 80%); border-color: rgba(0,212,255,0.8); box-shadow: 0 0 25px rgba(0,212,255,0.5), inset 0 0 10px rgba(0,212,255,0.5); }
+    .stellar-node.hazard  { background: radial-gradient(circle at center, rgba(255,180,171,0.2) 0%, transparent 70%); border-color: rgba(255,180,171,0.4); box-shadow: 0 0 15px rgba(255,180,171,0.2); }
+    .stellar-node.special { background: radial-gradient(circle at center, rgba(254,181,40,0.2) 0%, transparent 70%); border-color: rgba(254,181,40,0.4); box-shadow: 0 0 15px rgba(254,181,40,0.2); }
+    .node-inner { background: #a8e8ff; border-radius: 50%; box-shadow: 0 0 10px #a8e8ff; }
+    .stellar-node.hazard .node-inner  { background: #ffb4ab; box-shadow: 0 0 10px #ffb4ab; }
+    .stellar-node.special .node-inner { background: #feb528; box-shadow: 0 0 10px #feb528; }
+    .stellar-node.active .node-inner  { background: #fff; box-shadow: 0 0 20px #fff, 0 0 40px #00d4ff; }
+    .constellation-line { position: absolute; height: 2px; transform-origin: left center; z-index: 0; background: linear-gradient(90deg, rgba(0,212,255,0.1), rgba(0,212,255,0.4), rgba(0,212,255,0.1)); box-shadow: 0 0 8px rgba(0,212,255,0.2); }
+    .proj-token { position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #fff; box-shadow: 0 0 12px currentColor; z-index: 10; border: 2px solid rgba(255,255,255,0.85); }
+    .proj-node-label { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; pointer-events: none; line-height: 1; }
+
+    /* Astrolabe timer */
+    .astrolabe { position: relative; width: 160px; height: 160px; display: flex; align-items: center; justify-content: center; }
+    .astrolabe-ring { position: absolute; border-radius: 50%; }
+    .astrolabe-ring-1 { width: 100%; height: 100%; border: 2px solid rgba(254,181,40,0.2); border-top-color: rgba(254,181,40,0.8); }
+    .astrolabe-ring-2 { width: 85%; height: 85%; border: 1px solid rgba(0,212,255,0.3); border-bottom-color: rgba(0,212,255,0.8); }
+    .astrolabe-ring-3 { width: 70%; height: 70%; border: 2px dotted rgba(254,181,40,0.4); }
+    @keyframes proj-spin { to { transform: rotate(360deg); } }
+    @keyframes proj-spin-rev { to { transform: rotate(-360deg); } }
+    @keyframes proj-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+    .proj-spin-slow { animation: proj-spin 12s linear infinite; }
+    .proj-spin-rev-slow { animation: proj-spin-rev 15s linear infinite; }
+    .proj-float { animation: proj-float 6s ease-in-out infinite; }
   </style>
 </head>
 <body class="dark bg-surface-container-lowest text-on-surface font-body-md">
