@@ -1,6 +1,8 @@
-# Activity – Multiplayer Osztálytermi Játék
+# RMG Astro-Activity – Multiplayer Osztálytermi Játék
 
-Böngészőben futó, valós idejű, többjátékos **Activity-stílusú** oktatási játék. Táblákon játszható csapatverseny, ahol a játékosok szóban magyaráznak, rajzolnak vagy mutogatnak – a cél az ismeretek játékos formában való ismétlése.
+Böngészőben futó, valós idejű, többjátékos **Activity-stílusú** oktatási játék, **űr / sci-fi ("Astro") témájú** dizájnnal (holografikus HUD, csillagtérkép-tábla). Csapatverseny, ahol a játékosok magyaráznak, rajzolnak vagy mutogatnak – a cél az ismeretek játékos formában való ismétlése.
+
+> 🛠 Fejlesztői/architektúra dokumentáció: lásd [`project_memory.md`](project_memory.md). A nézetek felülettervei: [`docs/UI-SPEC.md`](docs/UI-SPEC.md).
 
 ---
 
@@ -41,6 +43,15 @@ Csapatban kell szavakat/fogalmakat kitaláltatni a többiekkel. Az a csapat nyer
 - **Lopott pont**: Más csapat is szerezhet pontot, ha a saját csapat helyett ők találják ki.
 - **Osztott pont**: Egyszerre több csapatnak is adható pont – `🤝 Osztott pontozás könyvelése`.
 - **Újra húzás**: A Játékmester az idő elindítása előtt újrahúzhatja a szót (`🔀 Feladvány újrasorsolása`).
+- **Fejlesztések (boostok)**: torpedó, gravitációs csapda, hiperhajtómű, időtágulás, pajzs.
+- **Űranomáliák**: minden 5. mezőn (szupernóva, féreglyuk, fekete lyuk, kommunikációs zavar).
+
+### Csatlakozás és kilépés
+- **Csatlakozás**: a főmenü **„Csatlakozás kóddal"** gombja külön oldalra visz (kód + név).
+- **Kilépés**: minden játék közbeni nézet fejlécében van **kilépés** gomb. A játékos kilép a
+  játékból; a Játékmester **befejezi és törli** a küldetést (mindenki visszakerül a főmenübe).
+  Újratöltéskor a böngésző automatikusan visszacsatlakozik a futó játékhoz (a kilépés gomb
+  törli ezt).
 
 ---
 
@@ -74,9 +85,9 @@ Csapatban kell szavakat/fogalmakat kitaláltatni a többiekkel. Az a csapat nyer
 
 3. **Indítás**:
    - Nyisd meg az `index.html`-t HTTP szerveren (pl. Live Server → `Go Live`)
-   - **Játékmester**: "Új játék" → beállítások → lobby kód megosztása
-   - **Játékosok**: megnyitják ugyanazt az URL-t, beírják a kódot és a nevüket
-   - **Kivetítő**: a Host Játék nézetben a "📺 Kivetítő megnyitása" gomb új ablakban nyitja meg
+   - **Játékmester**: "Új küldetés" → beállítások → lobby kód megosztása
+   - **Játékosok**: megnyitják ugyanazt az URL-t, „Csatlakozás kóddal" → kód és név
+   - **Kivetítő**: a Host vezérlőpult **„🌌 Kivetítő"** gombja új ablakban nyitja meg (csillagtérkép-tábla, pontszámok, időzítő – a titkos szót **soha** nem mutatja)
 
 ### GitHub Pages (opcionális)
 A projekt statikus, közvetlenül hosztolható GitHub Pages-en:
@@ -90,11 +101,13 @@ https://<felhasználónév>.github.io/<repo-neve>/
 
 | Technológia | Szerepe |
 |-------------|---------|
-| **HTML5** | Single-page alkalmazás – egyetlen `index.html`, 7 nézet-konténerrel |
-| **CSS3** | Sötét téma, reszponzív elrendezés, animált haladási tábla (CSS transitions) |
+| **HTML5** | Single-page alkalmazás – egyetlen `index.html`, 8 nézet-konténerrel |
+| **Tailwind CSS (Play CDN)** | A nézetek dizájnja; Material-Design-3 színpaletta (inline `tailwind.config`) |
+| **Material Symbols + Exo 2** | Ikonok és megjelenítő betűtípus (Google Fonts) |
+| **CSS3 (`css/style.css`)** | Amit a Tailwind nem fed le: téma-változók, splash, toast, briefing hologram, anomália-ablak, boost-chipek |
+| **WebGL** | Globális, animált csillagmező háttér (`index.html`) |
 | **Vanilla JavaScript (ES6 modules)** | Teljes frontend logika, nézetek, állapotkezelés – keretrendszer nélkül |
-| **Firebase Realtime Database** | Valós idejű adatszinkronizáció a játékosok között (WebSocket alapú) |
-| **Firebase SDK 10.12.2** | CDN-ről betöltve, `import`-tal használva |
+| **Firebase Realtime Database (SDK 10.12.2)** | Valós idejű adatszinkronizáció (CDN-ről, `import`-tal) |
 
 ---
 
@@ -102,24 +115,31 @@ https://<felhasználónév>.github.io/<repo-neve>/
 
 ```
 activity/
-├── index.html                  # SPA – 7 nézet-div + modul betöltés
+├── index.html                  # SPA – Tailwind + config + dizájn-CSS + csillagmező + 8 nézet-div
+├── project_memory.md           # Fejlesztői referencia (architektúra, adatmodell, gotchák)
 ├── css/
-│   └── style.css               # Teljes stíluslap (sötét téma, csapatszínek, tábla)
+│   └── style.css               # Amit a Tailwind nem fed le (téma-vars, splash, toast, briefing, anomália, boost-chip)
+├── docs/
+│   └── UI-SPEC.md              # Nézetenkénti felületterv (designer brief)
+├── img/                        # Logók, bolygók, hajók, ikonok
 └── js/
-    ├── app.js                  # Belépési pont – állapot, útvonalkezelés, Firebase figyelő
-    ├── firebase-config.js      # Firebase inicializálás + DB segédfüggvények
+    ├── app.js                  # Belépési pont – állapot, útvonalkezelés, Firebase figyelő, kilépés-logika
+    ├── firebase-config.js      # Firebase inicializálás + DB segédfüggvények (egyetlen adatréteg)
     ├── data/
     │   └── topics.js           # Szótár – témakörök és szavak (feltöltendő!)
     ├── logic/
     │   ├── turn-manager.js     # Kör generálás, szóhúzás, következő játékos kiválasztás
     │   ├── timer.js            # Fázisszámítás, szünet-támogatás (timerElapsedMs), időformázás
-    │   └── scoring.js          # Pontozás, lopott pont, osztott pont, következő kör indítása
+    │   ├── scoring.js          # Pontozás, lopott/osztott pont, győzelem, következő kör
+    │   ├── boosts.js           # Fejlesztések (torpedó, csapda, hiperhajtómű, időtágulás, pajzs)
+    │   └── anomaly.js          # Űranomáliák (szupernóva, féreglyuk, fekete lyuk, kommunikációs zavar)
     └── views/
-        ├── landing.js          # 1. nézet – Főmenü
-        ├── host-setup.js       # 2. nézet – Játékbeállítások (csapatok, témák, tábla)
-        ├── lobby.js            # 3. nézet – Váróterem (kód megjelenítés, csapatbeosztás)
-        ├── host-game.js        # 4/B nézet – Játékmester vezérlő (titkos szó, pontozás)
-        ├── projector.js        # 4/A nézet – Kivetítő (publikus, szó nélkül)
-        ├── player-game.js      # 4/C nézet – Játékos telefonos nézet
-        └── winner.js           # 5. nézet – Győztes képernyő
+        ├── landing.js          # Főmenü
+        ├── join.js             # Csatlakozás kóddal (dedikált oldal)
+        ├── host-setup.js       # Játékbeállítások (flották, témák, tábla hossza)
+        ├── lobby.js            # Váróterem (kód, csapatbeosztás) – Host + Játékos
+        ├── host-game.js        # Host vezérlőpult (titkos szó, időzítő, pontozás)
+        ├── projector.js        # Kivetítő (publikus csillagtérkép, szó nélkül)
+        ├── player-game.js      # Játékos telefonos nézet
+        └── winner.js           # Győztes képernyő
 ```
