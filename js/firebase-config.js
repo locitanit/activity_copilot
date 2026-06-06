@@ -158,4 +158,23 @@ export async function deleteAllGames() {
   await set(ref(db, 'games'), null);
 }
 
+/**
+ * Töröl egy adott játékot (a host fejezi be a küldetést).
+ * A többi kliens listenere ekkor null-t kap, és visszatér a főmenübe.
+ * @param {string} code  Játékkód
+ */
+export async function deleteGame(code) {
+  await set(ref(db, `games/${code}`), null);
+}
+
+/**
+ * Eltávolít egy játékost a játékból (a játékos kilép).
+ * @param {string} code      Játékkód
+ * @param {string} playerId  A játékos Firebase push-kulcsa
+ */
+export async function removePlayer(code, playerId) {
+  if (!code || !playerId) return;
+  await set(ref(db, `games/${code}/players/${playerId}`), null);
+}
+
 export { serverTimestamp };

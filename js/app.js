@@ -3,7 +3,7 @@
  * Globális kliens állapot, view-váltó, URL-param routing, Firebase game listener.
  */
 
-import { listenToGame } from './firebase-config.js';
+import { listenToGame, deleteGame, removePlayer } from './firebase-config.js';
 import { renderLanding }    from './views/landing.js';
 import { renderHostSetup }  from './views/host-setup.js';
 import { renderLobby }      from './views/lobby.js';
@@ -59,6 +59,78 @@ export function showToast(message, duration = 3000) {
   el.textContent = message;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), duration);
+}
+
+// ── Kilépés a játékból / vissza a főmenübe ─────────────────────
+/**
+ * Leiratkozik a Firebase figyelőről, törli a mentett munkamenetet,
+ * visszaállítja a kliens állapotot és visszatér a főmenüre.
+ * Ez a központi "vissza a kezdőlapra" útvonal (rejoin csapda feloldása).
+ */
+export function exitToMenu() {
+  if (state._unsubscribe) {
+    state._unsubscribe();
+    state._unsubscribe = null;
+  }
+  clearSession();
+  state.gameCode   = null;
+  state.playerId   = null;
+  state.playerName = null;
+  state.isHost     = false;
+  showView('view-landing');
+  renderLanding();
+}
+
+/**
+ * A felhasználó kilép az aktuális játékból.
+ * Host esetén megerősítés után törli a játékot (mindenki kilép),
+ * játékos esetén eltávolítja magát a játékosok közül. Végül főmenü.
+ */
+export async function leaveCurrentGame() {
+  const { gameCode, playerId, isHost } = state;
+
+  const message = isHost
+    ? 'Biztosan befejezed a küldetést? Minden asztronauta kilép, és a játék törlődik.'
+    : 'Biztosan kilépsz a küldetésből?';
+  if (!window.confirm(message)) return;
+
+  // Előbb leiratkozunk, hogy a saját törlésünkre ne fussunk rá feleslegesen.
+  if (state._unsubscribe) {
+    state._unsubscribe();
+    state._unsubscribe = null;
+  }
+
+  try {
+    if (gameCode && isHost) {
+      await deleteGame(gameCode);
+    } else if (gameCode && playerId) {
+      await removePlayer(gameCode, playerId);
+    }
+  } catch (err) {
+    showToast('Hiba a kilépéskor: ' + (err.message || 'ismeretlen'));
+  }
+
+  exitToMenu();
+}
+
+/**
+ * A játék-nézetekbe beilleszthető, rögzített "kilépés" gomb HTML-je.
+ * A felirat a szereptől függ (host: befejezés, játékos: kilépés).
+ * @returns {string}
+ */
+export function leaveBarHtml() {
+  const label = state.isHost ? 'Kilépés a küldetésből' : 'Kilépés';
+  return `<button type="button" id="btn-leave-game" title="Vissza a főmenübe"
+            class="flex items-center gap-2 text-error hover:text-error-container transition-colors font-label-md text-label-md uppercase">
+            <span class="material-symbols-outlined">logout</span>
+            <span class="hidden sm:inline">${label}</span>
+          </button>`;
+}
+
+/** Bekötí a kilépés gomb eseménykezelőjét (újrarendereléskor hívni kell). */
+export function wireLeaveBar() {
+  const btn = document.getElementById('btn-leave-game');
+  if (btn) btn.addEventListener('click', () => leaveCurrentGame());
 }
 
 // ── Firebase game listener ─────────────────────────────────────

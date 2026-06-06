@@ -1,105 +1,59 @@
 /**
  * views/landing.js – View 1: Főmenü
- * Gombok: "Új játék létrehozása (Host)" és "Csatlakozás kóddal".
+ * Gombok: "Új küldetés (Host)" és "Csatlakozás kóddal".
+ * Holografikus / űr-HUD dizájn (Tailwind + Material Symbols).
  */
 
-import { showView, showToast, state, startGameListener } from '../app.js';
-import { joinGame, deleteAllGames } from '../firebase-config.js';
-
-/** Inject randomly-placed star box-shadows on each visit */
-function _genStars() {
-  let s = document.getElementById('landing-stars-css');
-  if (!s) {
-    s = document.createElement('style');
-    s.id = 'landing-stars-css';
-    document.head.appendChild(s);
-  }
-  const W = Math.max(window.innerWidth, 1920);
-  const H = Math.max(window.innerHeight, 1080);
-  const ri = (n) => Math.floor(Math.random() * n);
-  const ra = (lo, hi) => (Math.random() * (hi - lo) + lo).toFixed(2);
-  const dots = (n, r, g, b) =>
-    Array.from({ length: n }, () =>
-      `${ri(W)}px ${ri(H)}px rgba(${r},${g},${b},${ra(0.4, 0.9)})`
-    ).join(',');
-  const bright = (n) =>
-    Array.from({ length: n }, () => {
-      const sp = ri(3) + 2;
-      return `${ri(W)}px ${ri(H)}px ${sp}px 1px rgba(255,255,255,${ra(0.7, 1)})`;
-    }).join(',');
-  s.textContent = [
-    `.sf1::before{box-shadow:${dots(260, 255, 255, 255)}}`,
-    `.sf1::after{box-shadow:${dots(90, 220, 180, 255)}}`,
-    `.sf2::before{box-shadow:${dots(220, 255, 255, 255)}}`,
-    `.sf2::after{box-shadow:${dots(70, 180, 220, 255)}}`,
-    `.sf3::before{box-shadow:${dots(320, 255, 255, 255)}}`,
-    `.sf3::after{box-shadow:${dots(60, 220, 180, 255)}}`,
-    `.sf4::before{box-shadow:${dots(150, 180, 220, 255)}}`,
-    `.sf4::after{box-shadow:${bright(22)}}`,
-  ].join('\n');
-}
+import { showView, showToast } from '../app.js';
+import { deleteAllGames } from '../firebase-config.js';
 
 export function renderLanding() {
   const el = document.getElementById('view-landing');
 
   el.innerHTML = `
-    <div class="star-field sf1" aria-hidden="true"></div>
-    <div class="star-field sf2" aria-hidden="true"></div>
-    <div class="star-field sf3" aria-hidden="true"></div>
-    <div class="star-field sf4" aria-hidden="true"></div>
+    <div class="min-h-screen w-full flex flex-col items-center justify-center px-margin-mobile py-12 relative">
 
-    <img class="landing-obj obj-blackhole" src="img/black_hole.png" alt="">
-    <img class="landing-obj obj-station"   src="img/space_station.png" alt="">
+      <!-- HUD sarokdíszek -->
+      <div class="fixed top-4 left-4 w-10 h-10 border-t-2 border-l-2 border-primary/30 pointer-events-none"></div>
+      <div class="fixed top-4 right-4 w-10 h-10 border-t-2 border-r-2 border-primary/30 pointer-events-none"></div>
+      <div class="fixed bottom-4 right-4 w-10 h-10 border-b-2 border-r-2 border-primary/30 pointer-events-none"></div>
 
-    <h1>RMG ASTRO-ACTIVITY</h1>
-    <p class="subtitle">Galaktikus csapatjáték</p>
+      <img src="img/black_hole.png" alt=""
+           class="w-[min(320px,72vw,38vh)] h-auto mb-8 drop-shadow-[0_0_55px_rgba(100,0,200,0.6)]"
+           style="animation:bh-pulse 6s ease-in-out infinite">
 
-    <div class="btn-group">
-      <button class="btn btn-primary btn-lg" id="btn-new-game">
-        Új küldetés
-      </button>
-      <button class="btn btn-secondary btn-lg" id="btn-join-game">
-        Csatlakozás kóddal
-      </button>
-    </div>
+      <h1 class="font-display-lg text-display-lg text-primary text-center tracking-[0.18em]
+                 drop-shadow-[0_0_20px_rgba(0,212,255,0.6)]">
+        RMG ASTRO-ACTIVITY
+      </h1>
+      <p class="font-label-md text-label-md text-primary-fixed-dim uppercase tracking-[0.3em] mt-3 mb-10">
+        Galaktikus csapatjáték
+      </p>
 
-    <!-- Csatlakozás overlay / modal -->
-    <div class="overlay hidden" id="join-overlay">
-      <div class="card modal">
-        <h2>Belépés a küldetésbe</h2>
-
-        <div class="form-group">
-          <label for="join-code">Küldetés-kód</label>
-          <input
-            id="join-code"
-            type="text"
-            placeholder="A1B2"
-            maxlength="4"
-            autocomplete="off"
-            spellcheck="false"
-            style="text-transform:uppercase;letter-spacing:0.25em;font-size:1.4rem;text-align:center"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="join-name">Asztronauta neve</label>
-          <input id="join-name" type="text" placeholder="Pl. Commandante" maxlength="30" autocomplete="off" />
-        </div>
-
-        <div class="modal-actions">
-          <button class="btn btn-primary btn-full" id="btn-join-confirm">Belépés →</button>
-          <button class="btn btn-secondary" id="btn-join-cancel">Mégse</button>
-        </div>
+      <div class="flex flex-col gap-4 w-full max-w-sm">
+        <button id="btn-new-game"
+          class="bg-primary-container text-on-primary-container font-label-md text-label-md uppercase
+                 px-6 py-4 rounded clip-chamfer neon-glow-primary transition-all
+                 flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined">rocket_launch</span> Új küldetés
+        </button>
+        <button id="btn-join-game"
+          class="holographic-panel text-primary font-label-md text-label-md uppercase
+                 px-6 py-4 rounded clip-chamfer hover:border-primary/50 transition-all
+                 flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined">login</span> Csatlakozás kóddal
+        </button>
       </div>
+
+      <!-- Rejtett admin (állomásra kattintás) -->
+      <img id="admin-station" src="img/space_station.png" alt=""
+           class="fixed bottom-6 left-6 w-32 h-auto opacity-60 cursor-default select-none pointer-events-auto"
+           style="animation:orbit-wobble 20s ease-in-out infinite">
     </div>
   `;
 
-  _genStars();
-
   // ── Eseménykezelők ──────────────────────────────────────────
-
   document.getElementById('btn-new-game').addEventListener('click', () => {
-    // Lazy import: host-setup.js-t csak akkor töltjük, ha kell
     import('./host-setup.js').then(({ renderHostSetup }) => {
       showView('view-host-setup');
       renderHostSetup();
@@ -107,37 +61,16 @@ export function renderLanding() {
   });
 
   document.getElementById('btn-join-game').addEventListener('click', () => {
-    document.getElementById('join-overlay').classList.remove('hidden');
-    document.getElementById('join-code').focus();
-  });
-
-  document.getElementById('btn-join-cancel').addEventListener('click', _closeJoinOverlay);
-
-  // Overlay-en kívülre kattintás → bezárás
-  document.getElementById('join-overlay').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('join-overlay')) _closeJoinOverlay();
-  });
-
-  document.getElementById('btn-join-confirm').addEventListener('click', _handleJoin);
-
-  // Enter billentyű az input mezőkön
-  ['join-code', 'join-name'].forEach(id => {
-    document.getElementById(id).addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') _handleJoin();
+    import('./join.js').then(({ renderJoin }) => {
+      showView('view-join');
+      renderJoin();
     });
   });
 
-  // Automatikus nagybetűsítés a kód mezőben
-  document.getElementById('join-code').addEventListener('input', (e) => {
-    const pos = e.target.selectionStart;
-    e.target.value = e.target.value.toUpperCase();
-    e.target.setSelectionRange(pos, pos);
-  });
-
   // ── Rejtett admin funkció: állomásra kattintás ─────────────
-  el.querySelector('.obj-station').addEventListener('click', async () => {
+  el.querySelector('#admin-station').addEventListener('click', async () => {
     const code = window.prompt('');
-    if (code !== 'XXX-RMG-XXX') return;
+    if (code !== 'SUDO_RM_RF_GALAXY') return;
     try {
       await deleteAllGames();
       showToast('Összes játék törölve.');
@@ -145,36 +78,4 @@ export function renderLanding() {
       showToast('Hiba: ' + (err.message || 'ismeretlen'));
     }
   });
-}
-
-// ── Privát segédfüggvények ─────────────────────────────────────
-
-function _closeJoinOverlay() {
-  document.getElementById('join-overlay').classList.add('hidden');
-}
-
-async function _handleJoin() {
-  const code = document.getElementById('join-code').value.trim().toUpperCase();
-  const name = document.getElementById('join-name').value.trim();
-
-  if (!code || code.length < 4) { showToast('Add meg a játékkódot!'); return; }
-  if (!name)                     { showToast('Add meg a nevedet!'); return; }
-
-  const btn = document.getElementById('btn-join-confirm');
-  btn.disabled = true;
-  btn.textContent = 'Csatlakozás...';
-
-  try {
-    const { playerId, gameCode } = await joinGame(code, name);
-    state.gameCode   = gameCode;
-    state.playerId   = playerId;
-    state.playerName = name;
-    state.isHost     = false;
-    _closeJoinOverlay();
-    startGameListener(gameCode);
-  } catch (err) {
-    showToast(err.message || 'Hiba történt. Próbáld újra!');
-    btn.disabled = false;
-    btn.textContent = 'Csatlakozás →';
-  }
 }

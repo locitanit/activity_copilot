@@ -1,6 +1,7 @@
 /**
  * views/host-setup.js – View 2: Host Beállítások
  * Csapatok száma és nevei, tábla hossza, feladattípusok, témakörök, lobby indítás.
+ * Holografikus dizájn (Tailwind + Material Symbols).
  */
 
 import { showView, showToast, state, startGameListener } from '../app.js';
@@ -12,6 +13,11 @@ const TEAM_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#ec
 const DEFAULT_NAMES = ['Piros', 'Kék', 'Zöld', 'Sárga', 'Lila', 'Rózsaszín'];
 const TASK_TYPES = ['mutogatás', 'rajzolás', 'körülírás'];
 
+const _cardCls = 'holographic-panel rounded-xl p-6 flex flex-col gap-4';
+const _titleCls = 'font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary flex items-center gap-2';
+const _labelCls = 'font-label-md text-label-md text-on-surface-variant uppercase';
+const _pillCls = 'flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container border border-outline-variant cursor-pointer hover:border-primary/50 transition-all font-body-md text-body-md has-[:checked]:border-primary has-[:checked]:bg-primary-container/10';
+
 export function renderHostSetup() {
   const topicKeys = Object.keys(topics);
   const el = document.getElementById('view-host-setup');
@@ -19,104 +25,114 @@ export function renderHostSetup() {
   const TASK_ICONS = { 'mutogatás': '🤸', 'rajzolás': '🎨', 'körülírás': '💬' };
 
   el.innerHTML = `
-    <div class="setup-container">
-      <div class="setup-header">
-        <h1>⚙️ Küldetés beállítások</h1>
-        <p class="setup-subtitle">Konfiguráld a küldetést, majd indítsd az Irányítóközpontot!</p>
+    <div class="w-full max-w-3xl mx-auto px-margin-mobile py-10 flex flex-col gap-gutter">
+
+      <div class="text-center">
+        <h1 class="font-display-md text-display-md text-primary uppercase tracking-widest flex items-center justify-center gap-3">
+          <span class="material-symbols-outlined text-4xl">settings</span> Küldetés beállítások
+        </h1>
+        <p class="font-body-md text-body-md text-on-surface-variant mt-2">
+          Konfiguráld a küldetést, majd indítsd az Irányítóközpontot!
+        </p>
       </div>
 
-      <!-- Flották kártya -->
-      <div class="setup-card">
-        <h2 class="setup-section-title">🚀 Űrflották</h2>
+      <!-- Flották -->
+      <div class="${_cardCls}">
+        <h2 class="${_titleCls}"><span class="material-symbols-outlined">rocket_launch</span> Űrflották</h2>
 
-        <div class="form-group">
-          <div class="setup-field-label">Flották száma</div>
-          <select id="team-count">
+        <div class="flex flex-col gap-2">
+          <span class="${_labelCls}">Flották száma</span>
+          <select id="team-count"
+            class="bg-surface-container border border-outline-variant rounded-lg text-on-surface px-4 py-3
+                   focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all">
             ${[2,3,4,5,6].map(n => `<option value="${n}"${n === 3 ? ' selected' : ''}>${n} flotta</option>`).join('')}
           </select>
         </div>
 
-        <div class="form-group">
-          <div class="setup-field-label">Flottabeosztás módja</div>
-          <div class="radio-pill-group">
-            <label class="radio-pill">
-              <input type="radio" name="assignmentType" value="random" checked>
-              <span class="radio-pill-dot"></span>
+        <div class="flex flex-col gap-2">
+          <span class="${_labelCls}">Flottabeosztás módja</span>
+          <div class="flex flex-wrap gap-2">
+            <label class="${_pillCls}">
+              <input type="radio" name="assignmentType" value="random" checked class="accent-primary-container">
               🎲 Véletlenszerű
             </label>
-            <label class="radio-pill">
-              <input type="radio" name="assignmentType" value="manual">
-              <span class="radio-pill-dot"></span>
+            <label class="${_pillCls}">
+              <input type="radio" name="assignmentType" value="manual" class="accent-primary-container">
               🖐️ Manuális választás
             </label>
           </div>
         </div>
 
-        <div class="form-group">
-          <div class="setup-field-label">Flottanevek</div>
-          <div class="team-names-container" id="team-names-container"></div>
+        <div class="flex flex-col gap-2">
+          <span class="${_labelCls}">Flottanevek</span>
+          <div class="flex flex-col gap-2" id="team-names-container"></div>
         </div>
       </div>
 
-      <!-- Csillagtérkép kártya -->
-      <div class="setup-card">
-        <h2 class="setup-section-title">🌌 Csillagtérkép</h2>
-        <div class="form-group">
-          <div class="setup-field-label">Térkép hossza (céltávolság)</div>
-          <div class="range-row">
-            <input id="board-length" type="range" min="5" max="60" value="30">
-            <span class="range-value" id="board-length-val">30</span>
+      <!-- Csillagtérkép -->
+      <div class="${_cardCls}">
+        <h2 class="${_titleCls}"><span class="material-symbols-outlined">map</span> Csillagtérkép</h2>
+        <div class="flex flex-col gap-2">
+          <span class="${_labelCls}">Térkép hossza (céltávolság)</span>
+          <div class="flex items-center gap-4">
+            <input id="board-length" type="range" min="5" max="60" value="30"
+                   class="flex-1 accent-primary-container">
+            <span id="board-length-val"
+                  class="font-display-md text-display-md text-primary-fixed-dim min-w-[3ch] text-right">30</span>
           </div>
         </div>
       </div>
 
-      <!-- Témakörök kártya -->
-      <div class="setup-card">
-        <h2 class="setup-section-title">📡 Adatbázisok</h2>
+      <!-- Adatbázisok -->
+      <div class="${_cardCls}">
+        <h2 class="${_titleCls}"><span class="material-symbols-outlined">database</span> Adatbázisok</h2>
         ${topicKeys.length === 0
-          ? `<p style="color:var(--warning);font-size:0.88rem">
-               ⚠️ Nincs téma definiálva a <code>js/data/topics.js</code> fájlban.
+          ? `<p class="text-tertiary-container font-body-md text-body-md">
+               ⚠️ Nincs téma definiálva a <code class="font-code-sm">js/data/topics.js</code> fájlban.
                Adj hozzá szavakat, majd frissítsd az oldalt.
              </p>`
-          : `<div class="pill-checkbox-group" id="topics-group">
+          : `<div class="flex flex-wrap gap-2" id="topics-group">
                ${topicKeys.map(k => `
-                 <label class="pill-check">
-                   <input type="checkbox" name="topic" value="${k}" checked>
-                   <span class="pill-check-mark">✓</span>
-                   ${k} <span class="pill-count">(${topics[k].length})</span>
-                 </label>
-               `).join('')}
+                 <label class="${_pillCls}">
+                   <input type="checkbox" name="topic" value="${k}" checked class="accent-primary-container">
+                   ${k} <span class="text-on-surface-variant font-code-sm text-code-sm">(${topics[k].length})</span>
+                 </label>`).join('')}
              </div>`
         }
       </div>
 
-      <!-- Feladattípusok kártya -->
-      <div class="setup-card">
-        <h2 class="setup-section-title">⚡ Küldetéstípusok</h2>
-        <div class="pill-checkbox-group" id="task-types-group">
+      <!-- Feladattípusok -->
+      <div class="${_cardCls}">
+        <h2 class="${_titleCls}"><span class="material-symbols-outlined">bolt</span> Küldetéstípusok</h2>
+        <div class="flex flex-wrap gap-2" id="task-types-group">
           ${TASK_TYPES.map(t => `
-            <label class="pill-check">
-              <input type="checkbox" name="taskType" value="${t}" checked>
-              <span class="pill-check-mark">✓</span>
+            <label class="${_pillCls}">
+              <input type="checkbox" name="taskType" value="${t}" checked class="accent-primary-container">
               ${TASK_ICONS[t] || ''} ${t}
-            </label>
-          `).join('')}
+            </label>`).join('')}
         </div>
       </div>
 
       <!-- Gombok -->
-      <div class="setup-actions">
-        <button class="btn btn-secondary" id="btn-setup-back">← Visszatérés</button>
-        <button class="btn btn-primary btn-lg" id="btn-create-lobby">Irányítóközpont indítása</button>
+      <div class="flex flex-col-reverse sm:flex-row gap-3 sm:justify-between">
+        <button id="btn-setup-back"
+          class="text-on-surface-variant hover:text-primary font-label-md text-label-md uppercase
+                 px-6 py-3 transition-colors flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined">arrow_back</span> Visszatérés
+        </button>
+        <button id="btn-create-lobby"
+          class="bg-primary-container text-on-primary-container font-label-md text-label-md uppercase
+                 px-8 py-3 rounded clip-chamfer neon-glow-primary transition-all
+                 flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined">sensors</span> Irányítóközpont indítása
+        </button>
       </div>
     </div>
   `;
 
-  // Kezdeti csapatnevek renderelése
   _renderTeamNameInputs(3);
 
   // ── Eseménykezelők ──────────────────────────────────────────
-
   document.getElementById('team-count').addEventListener('change', (e) => {
     _renderTeamNameInputs(parseInt(e.target.value, 10));
   });
@@ -143,11 +159,12 @@ function _renderTeamNameInputs(count) {
   container.innerHTML = '';
   for (let i = 0; i < count; i++) {
     const row = document.createElement('div');
-    row.className = 'team-name-row';
+    row.className = 'flex items-center gap-3';
     row.innerHTML = `
-      <span class="team-color-dot" style="background:${TEAM_COLORS[i]}"></span>
+      <span class="w-3 h-3 rounded-full flex-shrink-0" style="background:${TEAM_COLORS[i]};box-shadow:0 0 8px ${TEAM_COLORS[i]}"></span>
       <input
-        class="team-name-field"
+        class="team-name-field flex-1 bg-surface-container border border-outline-variant rounded-lg
+               text-on-surface px-4 py-2 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
         type="text"
         placeholder="${DEFAULT_NAMES[i]}"
         maxlength="20"
@@ -163,16 +180,13 @@ async function _handleCreateLobby() {
   const boardLength = parseInt(document.getElementById('board-length').value, 10);
   const assignmentType = document.querySelector('input[name="assignmentType"]:checked')?.value || 'random';
 
-  // Csapat nevek összegyűjtése (üres → placeholder érték)
   const teamNames = Array.from(document.querySelectorAll('.team-name-field'))
     .map(inp => inp.value.trim() || inp.placeholder);
 
-  // Feladattípusok
   const allowedTaskTypes = Array.from(
     document.querySelectorAll('#task-types-group input[type="checkbox"]:checked')
   ).map(cb => cb.value);
 
-  // Témakörök (csak ha van topics-group)
   const topicsGroup = document.getElementById('topics-group');
   const selectedTopics = topicsGroup
     ? Array.from(topicsGroup.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value)

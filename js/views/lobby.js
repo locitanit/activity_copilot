@@ -2,17 +2,26 @@
  * views/lobby.js – View 3: Váróterem
  * Host nézet: nagy kódkijelzés + valós idejű játékoslista.
  * Játékos nézet: csapatválasztás (manual mód) vagy várakozás.
- *
- * Teljes implementáció: Step 2
- * Step 1: alapvető megjelenítés + valós idejű játékoslista működik.
+ * Holografikus dizájn (Tailwind + Material Symbols).
  */
 
-import { showToast, state }           from '../app.js';
+import { showToast, leaveBarHtml, wireLeaveBar } from '../app.js';
 import { updateGameData }              from '../firebase-config.js';
 import { generateTurnData, selectNextPlayer } from '../logic/turn-manager.js';
 
-// Csapatszínek (CSS osztályok)
 const TEAM_COLORS_HEX = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#ec4899'];
+
+// Közös felső sáv (kilépés + session kód)
+function _topBar(gameCode) {
+  return `
+    <header class="flex justify-between items-center w-full px-margin-mobile py-3 border-b border-primary/20">
+      ${leaveBarHtml()}
+      <div class="glass-panel px-3 py-1 border border-primary/20 rounded font-code-sm text-code-sm">
+        <span class="text-primary opacity-70">SESSION: </span>
+        <span class="text-primary-container font-bold tracking-widest">${_esc(gameCode || '')}</span>
+      </div>
+    </header>`;
+}
 
 export function renderLobby(game, appState) {
   const el = document.getElementById('view-lobby');
@@ -25,6 +34,8 @@ export function renderLobby(game, appState) {
   } else {
     _renderPlayerLobby(el, game, playerEntries, teams, appState);
   }
+
+  wireLeaveBar();
 }
 
 // ── Host nézet ─────────────────────────────────────────────────
@@ -34,80 +45,85 @@ function _renderHostLobby(el, game, playerEntries, teams, appState) {
   const canStart = playerEntries.length >= 1 && isManualAllAssigned;
 
   el.innerHTML = `
-    <div class="lobby-container">
-      <p class="text-muted text-center" style="margin-bottom:0.5rem;font-size:0.9rem">
-        Oszd meg ezt a küldetés-kódot az asztronautákkal:
-      </p>
-      <div class="join-code-display">${appState.gameCode}</div>
+    <div class="min-h-screen w-full flex flex-col">
+      ${_topBar(appState.gameCode)}
 
-      <div class="card" style="margin-bottom:1.25rem">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-          <h3 style="font-size:1rem;font-weight:600">
-            Regisztrált asztronauták
-            <span style="color:var(--text-muted);font-weight:400">(${playerEntries.length})</span>
-          </h3>
-          <span style="font-size:0.82rem;color:var(--text-muted)">
-            ${game.settings.assignmentType === 'manual' ? '🤝 Manuális flottabeosztás' : '🎲 Véletlenszerű beosztás'}
-          </span>
+      <div class="flex-1 w-full max-w-4xl mx-auto px-margin-mobile py-8 flex flex-col gap-gutter">
+
+        <div class="text-center">
+          <p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-[0.2em] mb-3">
+            Oszd meg a küldetés-kódot az asztronautákkal
+          </p>
+          <div class="holographic-panel clip-chamfer inline-block px-12 py-4">
+            <span class="font-display-lg text-display-lg text-primary tracking-[0.3em]
+                         drop-shadow-[0_0_20px_rgba(0,212,255,0.6)]">${_esc(appState.gameCode)}</span>
+          </div>
         </div>
 
-        ${playerEntries.length === 0
-          ? `<p class="text-muted" style="font-size:0.9rem">Még egyetlen asztronauta sem érkezett...</p>`
-          : `<div class="players-grid">
-               ${teams.map((team, idx) => {
-                  const teamPlayers = playerEntries.filter(([, p]) => p.teamIndex === idx);
-                  return `
-                    <div class="team-column">
-                      <h3 style="color:${TEAM_COLORS_HEX[idx]}">
-                        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${TEAM_COLORS_HEX[idx]};margin-right:0.4rem"></span>
-                        ${team.name}
-                      </h3>
-                      <div class="player-list">
-                        ${teamPlayers.length === 0
-                          ? `<p class="text-muted" style="font-size:0.82rem">Nincs asztronauta</p>`
-                          : teamPlayers.map(([id, p]) => `
-                              <div class="player-chip">
-                                <span>👤</span> ${_esc(p.name)}
-                              </div>`).join('')
-                        }
-                      </div>
-                    </div>
-                  `;
-               }).join('')}
+        <div class="holographic-panel rounded-xl p-6 flex flex-col gap-4">
+          <div class="flex justify-between items-center">
+            <h3 class="font-headline-lg text-headline-lg-mobile text-primary flex items-center gap-2">
+              <span class="material-symbols-outlined">groups</span> Regisztrált asztronauták
+              <span class="text-on-surface-variant font-body-md">(${playerEntries.length})</span>
+            </h3>
+            <span class="font-label-md text-label-md text-on-surface-variant">
+              ${game.settings.assignmentType === 'manual' ? '🤝 Manuális beosztás' : '🎲 Véletlenszerű'}
+            </span>
+          </div>
 
-               <!-- Nem osztott be játékosok -->
-               ${(() => {
-                  const unassigned = playerEntries.filter(([, p]) => p.teamIndex < 0);
-                  if (unassigned.length === 0) return '';
-                  return `
-                    <div class="team-column">
-                      <h3 style="color:var(--text-muted)">Besorolatlan</h3>
-                      <div class="player-list">
-                        ${unassigned.map(([, p]) => `
-                          <div class="player-chip">
-                            <span>👤</span> ${_esc(p.name)}
-                          </div>`).join('')}
-                      </div>
-                    </div>
-                  `;
-               })()}
-             </div>`
-        }
-      </div>
+          ${playerEntries.length === 0
+            ? `<p class="text-on-surface-variant font-body-md text-body-md">Még egyetlen asztronauta sem érkezett...</p>`
+            : `<div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                 ${teams.map((team, idx) => {
+                    const teamPlayers = playerEntries.filter(([, p]) => p.teamIndex === idx);
+                    return `
+                      <div class="bg-surface-container rounded-lg p-3 border-t-2" style="border-color:${TEAM_COLORS_HEX[idx]}">
+                        <h4 class="font-label-md text-label-md mb-2 flex items-center gap-2" style="color:${TEAM_COLORS_HEX[idx]}">
+                          <span class="w-2 h-2 rounded-full" style="background:${TEAM_COLORS_HEX[idx]}"></span>
+                          ${_esc(team.name)}
+                        </h4>
+                        <div class="flex flex-col gap-1">
+                          ${teamPlayers.length === 0
+                            ? `<p class="text-on-surface-variant font-code-sm text-code-sm">Nincs asztronauta</p>`
+                            : teamPlayers.map(([, p]) => `
+                                <div class="flex items-center gap-2 text-on-surface font-body-md text-body-md">
+                                  <span class="material-symbols-outlined text-sm">person</span> ${_esc(p.name)}
+                                </div>`).join('')}
+                        </div>
+                      </div>`;
+                 }).join('')}
+                 ${(() => {
+                    const unassigned = playerEntries.filter(([, p]) => p.teamIndex < 0);
+                    if (unassigned.length === 0) return '';
+                    return `
+                      <div class="bg-surface-container rounded-lg p-3 border-t-2 border-outline-variant">
+                        <h4 class="font-label-md text-label-md text-on-surface-variant mb-2">Besorolatlan</h4>
+                        <div class="flex flex-col gap-1">
+                          ${unassigned.map(([, p]) => `
+                            <div class="flex items-center gap-2 text-on-surface font-body-md text-body-md">
+                              <span class="material-symbols-outlined text-sm">person</span> ${_esc(p.name)}
+                            </div>`).join('')}
+                        </div>
+                      </div>`;
+                 })()}
+               </div>`
+          }
+        </div>
 
-      <div style="display:flex;gap:1rem">
-        <button class="btn btn-primary btn-lg btn-full" id="btn-start-game"
-          ${canStart ? '' : 'disabled'}>
-          Küldetés indítása →
+        <button id="btn-start-game" ${canStart ? '' : 'disabled'}
+          class="bg-primary-container text-on-primary-container font-label-md text-label-md uppercase
+                 px-8 py-4 rounded clip-chamfer neon-glow-primary transition-all
+                 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none">
+          <span class="material-symbols-outlined">play_arrow</span> Küldetés indítása
         </button>
+        ${!canStart
+          ? `<p class="text-on-surface-variant text-center font-body-md text-body-md">
+               ${playerEntries.length === 0
+                 ? 'Legalább 1 asztronauta szükséges'
+                 : 'Minden asztronautának flottában kell lennie (kézi mód)'}
+             </p>`
+          : ''}
       </div>
-      ${!canStart
-        ? `<p class="text-muted text-center mt-1" style="font-size:0.85rem">
-             ${ playerEntries.length === 0
-               ? 'Legalább 1 asztronauta szükséges'
-               : 'Minden asztronautának flottában kell lennie (kézi mód)'}
-           </p>`
-        : ''}
     </div>
   `;
 
@@ -115,10 +131,8 @@ function _renderHostLobby(el, game, playerEntries, teams, appState) {
     const btn = document.getElementById('btn-start-game');
     btn.disabled = true;
     btn.textContent = 'Indítás...';
-
     try {
       await _handleStartGame(game, playerEntries, appState);
-      // Ha sikeres, a Firebase listener automatikusan átváltja a nézetet
     } catch (err) {
       showToast('❌ Hiba a küldetés indításakor: ' + err.message);
       const b = document.getElementById('btn-start-game');
@@ -134,20 +148,17 @@ async function _handleStartGame(game, playerEntries, appState) {
   const teamCount = teams.length;
   const updates   = {};
 
-  // Másolatot készítünk a players-ről, hogy lokálisan alkalmazzuk a kiosztást
   let effectivePlayers = Object.fromEntries(
     playerEntries.map(([id, p]) => [id, { ...p }])
   );
 
   if (settings.assignmentType === 'random') {
-    // Véletlenszerű kiosztás: körözéssel egyenletes eloszlás
     playerEntries.forEach(([id], idx) => {
       const ti = idx % teamCount;
       updates[`players/${id}/teamIndex`] = ti;
       effectivePlayers[id].teamIndex = ti;
     });
   } else {
-    // Kézi mód: ellenőrzés – mindenki csapatban van-e?
     const unassigned = playerEntries.filter(([, p]) => p.teamIndex < 0);
     if (unassigned.length > 0) {
       showToast(`⚠️ ${unassigned.length} asztronauta még nincs flottában!`);
@@ -155,7 +166,6 @@ async function _handleStartGame(game, playerEntries, appState) {
     }
   }
 
-  // 4 feladványt generálunk előre (1 current + 3 upcoming)
   const generatedTurns = [];
   for (let i = 0; i < 4; i++) {
     const used = generatedTurns.map(g => g.word);
@@ -165,7 +175,7 @@ async function _handleStartGame(game, playerEntries, appState) {
   }
 
   if (generatedTurns.length === 0) {
-      showToast('⚠️ Nincs küldets! Töltsd fel a topics.js fájlt szavakkal.');
+    showToast('⚠️ Nincs küldets! Töltsd fel a topics.js fájlt szavakkal.');
     return;
   }
 
@@ -184,7 +194,6 @@ async function _handleStartGame(game, playerEntries, appState) {
     wordRevealed:   false,
   };
 
-  // Atomikus Firebase írás: csapat-kiosztás + játékstátusz + első kör
   updates['status']       = 'briefing';
   updates['currentTurn']  = currentTurn;
   updates['upcomingTurns'] = upcomingTurns;
@@ -204,47 +213,57 @@ function _renderPlayerLobby(el, game, playerEntries, teams, appState) {
     .filter(([id, p]) => p.teamIndex === myTeamIdx && myTeamIdx >= 0 && id !== appState.playerId);
 
   el.innerHTML = `
-    <div class="lobby-container text-center">
-      <p class="text-muted" style="margin-bottom:0.5rem;font-size:0.9rem">Küldetés-kód</p>
-      <div class="join-code-display">${appState.gameCode}</div>
+    <div class="min-h-screen w-full flex flex-col">
+      ${_topBar(appState.gameCode)}
 
-      ${isManual && myTeamIdx < 0
-        ? `<!-- Csapatválasztó gombok (manual mód, még nem osztottak be) -->
-           <div class="card" style="margin-bottom:1rem">
-             <p style="margin-bottom:0.75rem;font-weight:600">Válassz flottát:</p>
-             <div class="team-select-btns">
-               ${teams.map((team, idx) => {
-                  const count = playerEntries.filter(([, p]) => p.teamIndex === idx).length;
-                  return `
-                    <button class="btn btn-secondary team-join-btn" data-team="${idx}"
-                      style="border-left:4px solid ${TEAM_COLORS_HEX[idx]}">
-                      ${_esc(team.name)}
-                      <span style="color:var(--text-muted);font-size:0.82rem;margin-left:0.4rem">(${count})</span>
-                    </button>`;
-               }).join('')}
-             </div>
-           </div>`
-        : myTeam
-          ? `<!-- Csapat megjelenítés -->
-             <div class="card" style="margin-bottom:1rem;border-color:${TEAM_COLORS_HEX[myTeamIdx]}">
-               <p class="text-muted" style="font-size:0.82rem;margin-bottom:0.3rem">A flottád</p>
-               <p style="font-size:1.5rem;font-weight:700;color:${TEAM_COLORS_HEX[myTeamIdx]}">${_esc(myTeam.name)}</p>
-               ${teammates.length > 0
-                 ? `<p class="text-muted mt-1" style="font-size:0.85rem">
-                      Flottábeli asztronauták: ${teammates.map(([, p]) => _esc(p.name)).join(', ')}
-                    </p>`
-                 : `<p class="text-muted mt-1" style="font-size:0.82rem">Egyedüli asztronauta a flottában</p>`}
-             </div>`
-          : `<div class="card" style="margin-bottom:1rem">
-               <p class="text-muted">Flottabeosztás folyamatban...</p>
-             </div>`
-      }
+      <div class="flex-1 w-full max-w-md mx-auto px-margin-mobile py-8 flex flex-col gap-gutter text-center">
 
-      <p class="lobby-status">Várakozás az Irányítóközpontra...</p>
+        <div>
+          <p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-[0.2em] mb-3">Küldetés-kód</p>
+          <div class="holographic-panel clip-chamfer inline-block px-10 py-4">
+            <span class="font-display-lg text-display-lg text-primary tracking-[0.3em]
+                         drop-shadow-[0_0_20px_rgba(0,212,255,0.6)]">${_esc(appState.gameCode)}</span>
+          </div>
+        </div>
+
+        ${isManual && myTeamIdx < 0
+          ? `<div class="holographic-panel rounded-xl p-5">
+               <p class="font-label-md text-label-md text-on-surface-variant uppercase mb-4">Válassz flottát</p>
+               <div class="flex flex-col gap-3">
+                 ${teams.map((team, idx) => {
+                    const count = playerEntries.filter(([, p]) => p.teamIndex === idx).length;
+                    return `
+                      <button class="team-join-btn glass-panel rounded-lg px-4 py-3 flex justify-between items-center
+                                     border-l-4 hover:bg-primary/5 transition-all font-body-lg text-body-lg"
+                              data-team="${idx}" style="border-color:${TEAM_COLORS_HEX[idx]}">
+                        <span>${_esc(team.name)}</span>
+                        <span class="text-on-surface-variant font-code-sm text-code-sm">(${count})</span>
+                      </button>`;
+                 }).join('')}
+               </div>
+             </div>`
+          : myTeam
+            ? `<div class="holographic-panel rounded-xl p-6" style="border-color:${TEAM_COLORS_HEX[myTeamIdx]}">
+                 <p class="font-label-md text-label-md text-on-surface-variant uppercase mb-1">A flottád</p>
+                 <p class="font-display-md text-display-md" style="color:${TEAM_COLORS_HEX[myTeamIdx]}">${_esc(myTeam.name)}</p>
+                 ${teammates.length > 0
+                   ? `<p class="text-on-surface-variant font-body-md text-body-md mt-3">
+                        Flottábeli asztronauták: ${teammates.map(([, p]) => _esc(p.name)).join(', ')}
+                      </p>`
+                   : `<p class="text-on-surface-variant font-body-md text-body-md mt-3">Egyedüli asztronauta a flottában</p>`}
+               </div>`
+            : `<div class="holographic-panel rounded-xl p-6">
+                 <p class="text-on-surface-variant font-body-md text-body-md">Flottabeosztás folyamatban...</p>
+               </div>`
+        }
+
+        <p class="font-label-md text-label-md text-primary-fixed-dim uppercase tracking-wider animate-pulse">
+          Várakozás az Irányítóközpontra...
+        </p>
+      </div>
     </div>
   `;
 
-  // Csapat-kiválasztó gombok (manual mód)
   document.querySelectorAll('.team-join-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const teamIndex = parseInt(btn.dataset.team, 10);

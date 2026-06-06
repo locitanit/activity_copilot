@@ -1,16 +1,232 @@
 <!DOCTYPE html>
-<html lang="hu">
+<html class="dark" lang="hu">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RMG Astro-Activity</title>
   <link rel="icon" type="image/png" href="img/favicon.png">
+
+  <!-- Fonts & icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+
+  <!-- Tailwind (Play CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary-fixed-dim": "#3cd7ff",
+            "surface-container-lowest": "#080f12",
+            "inverse-surface": "#dde3e7",
+            "surface-dim": "#0e1417",
+            "on-secondary-fixed": "#001e2f",
+            "error": "#ffb4ab",
+            "on-secondary-container": "#91bde1",
+            "secondary-fixed": "#cae6ff",
+            "primary-container": "#00d4ff",
+            "on-tertiary-fixed": "#281900",
+            "surface-container-highest": "#2f3639",
+            "on-error": "#690005",
+            "tertiary": "#ffd9a1",
+            "tertiary-container": "#feb528",
+            "primary": "#a8e8ff",
+            "secondary-container": "#1c4d6c",
+            "surface-variant": "#2f3639",
+            "tertiary-fixed": "#ffdeae",
+            "on-surface": "#dde3e7",
+            "surface-container-high": "#242b2e",
+            "on-surface-variant": "#bbc9cf",
+            "surface": "#0e1417",
+            "surface-tint": "#3cd7ff",
+            "on-secondary": "#00344e",
+            "on-tertiary": "#432c00",
+            "surface-container": "#1a2123",
+            "outline-variant": "#3c494e",
+            "on-primary-container": "#00586b",
+            "surface-container-low": "#161d1f",
+            "tertiary-fixed-dim": "#ffba3d",
+            "surface-bright": "#333a3d",
+            "on-secondary-fixed-variant": "#194b69",
+            "secondary": "#9fccf0",
+            "inverse-on-surface": "#2b3134",
+            "outline": "#859398",
+            "on-background": "#dde3e7",
+            "primary-fixed": "#b4ebff",
+            "on-tertiary-fixed-variant": "#604100",
+            "background": "#0e1417",
+            "on-primary-fixed-variant": "#004e5f",
+            "on-primary": "#003642",
+            "secondary-fixed-dim": "#9fccf0",
+            "inverse-primary": "#00677e",
+            "on-tertiary-container": "#6c4900",
+            "error-container": "#93000a",
+            "on-error-container": "#ffdad6",
+            "on-primary-fixed": "#001f27"
+          },
+          borderRadius: {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          spacing: {
+            "container-max": "1440px",
+            "gutter": "24px",
+            "unit": "4px",
+            "margin-mobile": "16px",
+            "margin-desktop": "48px"
+          },
+          fontFamily: {
+            "display-md": ["Exo 2"],
+            "body-md": ["Exo 2"],
+            "headline-lg": ["Exo 2"],
+            "headline-lg-mobile": ["Exo 2"],
+            "body-lg": ["Exo 2"],
+            "code-sm": ["monospace"],
+            "display-lg": ["Exo 2"],
+            "label-md": ["Exo 2"]
+          },
+          fontSize: {
+            "display-md": ["36px", { "lineHeight": "1.2", "letterSpacing": "0.08em", "fontWeight": "700" }],
+            "body-md": ["16px", { "lineHeight": "1.6", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "headline-lg": ["28px", { "lineHeight": "1.3", "letterSpacing": "0.05em", "fontWeight": "600" }],
+            "headline-lg-mobile": ["24px", { "lineHeight": "1.3", "letterSpacing": "0.05em", "fontWeight": "600" }],
+            "body-lg": ["18px", { "lineHeight": "1.6", "letterSpacing": "0.01em", "fontWeight": "400" }],
+            "code-sm": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "400" }],
+            "display-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "0.1em", "fontWeight": "800" }],
+            "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0.15em", "fontWeight": "600" }]
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Existing styles: splash, toast, view system, projector -->
   <link rel="stylesheet" href="css/style.css">
+
+  <!-- New design-system utilities (holographic / glass / chamfer / scanlines) -->
+  <style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      vertical-align: middle;
+    }
+    .material-symbols-outlined.fill { font-variation-settings: 'FILL' 1; }
+
+    /* Holographic panel – frosted glass + faint scanlines */
+    .holographic-panel {
+      background: rgba(2, 5, 16, 0.7);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      border: 1px solid rgba(60, 215, 255, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+    .holographic-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(rgba(60, 215, 255, 0.05) 1px, transparent 1px);
+      background-size: 100% 4px;
+      pointer-events: none;
+      opacity: 0.3;
+    }
+
+    .glass-panel {
+      background-color: rgba(2, 5, 16, 0.7);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+    }
+
+    .neon-glow-primary:hover { box-shadow: 0 0 15px rgba(0, 212, 255, 0.6); }
+    .neon-border-red { border-left: 4px solid #ef4444; }
+
+    .clip-chamfer {
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    }
+
+    .outer-glow-cyan { box-shadow: 0 0 15px rgba(0, 212, 255, 0.3); }
+
+    /* Scanline overlay (player device) */
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.1) 51%);
+      background-size: 100% 4px;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    /* ── View system: redesigned views own their own layout (block) ── */
+    #view-landing.active,
+    #view-join.active,
+    #view-host-setup.active,
+    #view-lobby.active,
+    #view-host-game.active,
+    #view-player-game.active,
+    #view-projector.active,
+    #view-winner.active {
+      display: block;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    /* Global starfield sits behind the app */
+    #bg-stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    #app { position: relative; z-index: 1; }
+
+    /* ── Projector (Kivetítő) HUD ─────────────────────────────── */
+    #view-projector.active {
+      background: #000;
+      background-image: linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 100% 4px;
+      height: 100vh;
+      min-height: unset;
+      overflow: hidden;
+    }
+    @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+    .animate-marquee { animation: marquee 22s linear infinite; }
+
+    .proj-hud-corner { position: absolute; width: 24px; height: 24px; border-color: rgba(0,212,255,0.8); border-style: solid; }
+    .proj-hud-corner-tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+    .proj-hud-corner-tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+    .proj-hud-corner-bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+    .proj-hud-corner-br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+    .proj-hex {
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      width: 58px; height: 58px; flex-shrink: 0;
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      background: rgba(0,212,255,0.10);
+    }
+    .proj-hex--start   { background: rgba(0,212,255,0.05); }
+    .proj-hex--end     { background: rgba(0,212,255,0.22); }
+    .proj-hex--anomaly { background: rgba(255,75,75,0.16); }
+    .proj-hex--trap    { background: rgba(254,181,40,0.16); }
+    .proj-hex-num { font-weight: 700; font-size: 0.95rem; color: #bbc9cf; }
+    .proj-hex--end .proj-hex-num, .proj-hex--start .proj-hex-num { color: #a8e8ff; }
+    .proj-hex-mark { position: absolute; top: 5px; font-size: 0.7rem; }
+    .proj-token-row { position: absolute; bottom: 3px; display: flex; gap: 2px; justify-content: center; }
+    .proj-token {
+      width: 21px; height: 21px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: bold;
+      box-shadow: 0 0 10px currentColor; border: 1px solid rgba(255,255,255,0.5);
+    }
+  </style>
 </head>
-<body>
+<body class="dark bg-surface-container-lowest text-on-surface font-body-md">
+
+  <!-- Global animated starfield (behind everything) -->
+  <div id="bg-stars" aria-hidden="true">
+    <canvas id="bg-shader-canvas" style="display:block;width:100%;height:100%"></canvas>
+  </div>
+
   <div id="splash">
     <img src="img/game_logo.png" alt="RMG Astro-Activity" class="splash-logo">
   </div>
@@ -18,6 +234,9 @@
   <div id="app">
     <!-- View 1: Főmenü -->
     <div id="view-landing" class="view"></div>
+
+    <!-- View 1/B: Csatlakozás kóddal (dedikált oldal) -->
+    <div id="view-join" class="view"></div>
 
     <!-- View 2: Host Beállítások -->
     <div id="view-host-setup" class="view"></div>
@@ -37,6 +256,75 @@
     <!-- View 5: Győztes Hirdetés -->
     <div id="view-winner" class="view"></div>
   </div>
+
+  <!-- Global starfield shader -->
+  <script>
+    (function () {
+      const canvas = document.getElementById('bg-shader-canvas');
+      if (!canvas) return;
+      function syncSize() {
+        const w = canvas.clientWidth || window.innerWidth;
+        const h = canvas.clientHeight || window.innerHeight;
+        if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+      }
+      if (typeof ResizeObserver !== 'undefined') new ResizeObserver(syncSize).observe(canvas);
+      window.addEventListener('resize', syncSize);
+      syncSize();
+
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (!gl) return;
+      const vs = `attribute vec2 a_position; void main(){ gl_Position = vec4(a_position,0.0,1.0); }`;
+      const fs = `precision highp float;
+        uniform float u_time; uniform vec2 u_resolution;
+        float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
+        void main(){
+          vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+          vec2 asp = vec2(u_resolution.x / u_resolution.y, 1.0);
+          vec3 color = vec3(0.007, 0.02, 0.06);
+          // subtle nebula glow
+          float glow = sin(uv.x * 3.0 + u_time * 0.2) * cos(uv.y * 2.0 - u_time * 0.1);
+          color += vec3(0.0, 0.18, 0.36) * glow * 0.08;
+          // point-star layers
+          for (int layer = 0; layer < 2; layer++) {
+            float scale = 38.0 + float(layer) * 64.0;
+            vec2 sp = uv * asp * scale;
+            vec2 cell = floor(sp);
+            vec2 f = fract(sp);
+            float n = hash(cell + float(layer) * 19.0);
+            if (n > 0.93) {
+              vec2 c = vec2(hash(cell + 1.3), hash(cell + 2.7));
+              float d = length((f - c) / vec2(1.0));
+              float b = smoothstep(0.07, 0.0, d) * (n - 0.93) / 0.07;
+              float blink = 0.6 + 0.4 * sin(u_time * 1.5 + n * 30.0);
+              color += vec3(0.85, 0.92, 1.0) * b * blink;
+            }
+          }
+          gl_FragColor = vec4(color, 1.0);
+        }`;
+      function cs(t, s){ const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh); return sh; }
+      const prog = gl.createProgram();
+      gl.attachShader(prog, cs(gl.VERTEX_SHADER, vs));
+      gl.attachShader(prog, cs(gl.FRAGMENT_SHADER, fs));
+      gl.linkProgram(prog); gl.useProgram(prog);
+      const buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+      const pos = gl.getAttribLocation(prog, 'a_position');
+      gl.enableVertexAttribArray(pos);
+      gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+      const uTime = gl.getUniformLocation(prog, 'u_time');
+      const uRes = gl.getUniformLocation(prog, 'u_resolution');
+      function render(t){
+        if (typeof ResizeObserver === 'undefined') syncSize();
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        if (uTime) gl.uniform1f(uTime, t * 0.001);
+        if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(render);
+      }
+      render(0);
+    })();
+  </script>
 
   <script type="module" src="js/app.js"></script>
 </body>

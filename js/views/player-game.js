@@ -1,18 +1,31 @@
 /**
- * views/player-game.js – View 4/C: Játékos nézet játék közben (teljes implementáció)
- * ─────────────────────────────────────────────────────────────────────────────────
- * Aktív játékos : látja a titkosított adatcsomagot (arany), timer, csillagtérkép állása
- * Passzív játékos: NEM látja a szót, csak feladattípust, timert, csillagtérkép állását
+ * views/player-game.js – View 4/C: Játékos nézet játék közben
+ * Holografikus, csapatszínre hangolt dizájn (Tailwind + Material Symbols).
+ * A "playing" állapot a player-device mockup alapján; a briefing hologramot tart.
  */
 
-import { getElapsedMs, getPhaseInfo, formatTime } from '../logic/timer.js';
-import { showToast } from '../app.js';
+import { getElapsedMs, getPhaseInfo, getTotalSeconds, formatTime } from '../logic/timer.js';
+import { showToast, leaveBarHtml, wireLeaveBar } from '../app.js';
 import { activateTorpedo, activateTrap, activateHyperdrive, activateTimeDilation, BOOST_TYPES } from '../logic/boosts.js';
 
 const TEAM_COLORS = ['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899'];
+const PHASE_HEX = { 'phase-0': '#bbc9cf', 'phase-1': '#00e676', 'phase-2': '#ffd600', 'phase-3': '#ff1744' };
+const RING_C = 289; // 2 * π * 46
 
 let _timerInterval = null;
 let _detailsOpen = false;
+
+// Csapatszínre hangolt ambient réteg (rács + scanlines + HUD sarkok)
+function _ambient() {
+  return `
+    <div class="fixed inset-0 pointer-events-none z-0"
+         style="background-image:linear-gradient(rgba(0,212,255,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.05) 1px,transparent 1px);background-size:20px 20px"></div>
+    <div class="scanlines" style="z-index:30"></div>
+    <div class="fixed top-0 left-0 w-16 h-16 pointer-events-none z-20 opacity-30"><div class="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-primary"></div></div>
+    <div class="fixed top-0 right-0 w-16 h-16 pointer-events-none z-20 opacity-30"><div class="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-primary"></div></div>
+    <div class="fixed bottom-0 left-0 w-16 h-16 pointer-events-none z-20 opacity-30"><div class="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-primary"></div></div>
+    <div class="fixed bottom-0 right-0 w-16 h-16 pointer-events-none z-20 opacity-30"><div class="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-primary"></div></div>`;
+}
 
 export function renderPlayerGame(game, appState) {
   if (_timerInterval) { clearInterval(_timerInterval); _timerInterval = null; }
@@ -21,9 +34,8 @@ export function renderPlayerGame(game, appState) {
 
   if (!game) {
     el.style.background = '';
-    el.innerHTML = `<div class="player-game-container">
-      <p class="text-muted">Várakozás a játékra...</p>
-    </div>`;
+    el.innerHTML = `<div class="min-h-screen flex items-center justify-center">
+      <p class="text-on-surface-variant">Várakozás a játékra...</p></div>`;
     return;
   }
 
@@ -101,9 +113,8 @@ export function renderPlayerGame(game, appState) {
 
   if (game.status !== 'playing') {
     el.style.background = '';
-    el.innerHTML = `<div class="player-game-container">
-      <p class="text-muted">Várakozás a játékra...</p>
-    </div>`;
+    el.innerHTML = `<div class="min-h-screen flex items-center justify-center">
+      <p class="text-on-surface-variant">Várakozás a játékra...</p></div>`;
     return;
   }
 
@@ -116,21 +127,25 @@ export function renderPlayerGame(game, appState) {
   const commDisruptionActive  = !!currentTurn.commDisruptionActive;
   const phaseInfo      = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive, commDisruptionActive);
   const timerHasValue  = getElapsedMs(timerStartedAt, timerElapsedMs) > 0;
+  const totalSeconds   = getTotalSeconds(timeDilationActive, commDisruptionActive) || 1;
+  const timerColor     = PHASE_HEX[phaseInfo.colorClass] || '#feb528';
+  const ringOffset     = Math.max(0, Math.min(RING_C, RING_C * (1 - phaseInfo.secondsLeft / totalSeconds)));
 
   const isActive      = currentTurn.activePlayerId === appState.playerId;
-  const me             = players[appState.playerId];
-  const myTeamIdx      = me?.teamIndex ?? -1;
-  const myTeam         = myTeamIdx >= 0 ? teams[myTeamIdx] : null;
-  const myColor        = myTeamIdx >= 0 ? TEAM_COLORS[myTeamIdx] : '#888';
-  const isTeamActive   = !isActive && currentTurn.teamIndex === myTeamIdx && myTeamIdx >= 0;
-  const role           = isActive ? 'active' : (isTeamActive ? 'guesser' : 'passive');
-  const roleLabel      = isActive ? '🚀 Küldetésen vagy!' : (isTeamActive ? '🔬 Visszafejtő' : '📡 Megfigyelő');
+  const me            = players[appState.playerId];
+  const myTeamIdx     = me?.teamIndex ?? -1;
+  const myTeam        = myTeamIdx >= 0 ? teams[myTeamIdx] : null;
+  const myColor       = myTeamIdx >= 0 ? TEAM_COLORS[myTeamIdx] : '#888';
+  const isTeamActive  = !isActive && currentTurn.teamIndex === myTeamIdx && myTeamIdx >= 0;
+  const role          = isActive ? 'active' : (isTeamActive ? 'guesser' : 'passive');
+  const roleEmoji     = isActive ? '🚀' : (isTeamActive ? '🔬' : '📡');
+  const roleLabel     = isActive ? 'Küldetésen vagy!' : (isTeamActive ? 'Visszafejtő' : 'Megfigyelő');
 
-  const activeTeam  = teams[currentTurn.teamIndex] || {};
-  const activeColor = TEAM_COLORS[currentTurn.teamIndex] || '#888';
+  const activeTeam    = teams[currentTurn.teamIndex] || {};
+  const activeColor   = TEAM_COLORS[currentTurn.teamIndex] || '#888';
+  const boardLen      = game.settings?.boardLength || 30;
 
-  // Flotta sorrendje
-  const myTeamPlayers  = myTeamIdx >= 0
+  const myTeamPlayers = myTeamIdx >= 0
     ? Object.entries(players)
         .filter(([, p]) => p.teamIndex === myTeamIdx)
         .sort((a, b) => (a[1].turnCount || 0) - (b[1].turnCount || 0))
@@ -139,205 +154,183 @@ export function renderPlayerGame(game, appState) {
   const activeInMyTeam = _activeId && players[_activeId]?.teamIndex === myTeamIdx ? _activeId : null;
   const nextInMyTeam   = !activeInMyTeam && myTeamPlayers.length > 0 ? myTeamPlayers[0][0] : null;
 
-  // Háttérszín a csapat színe alapján
-  el.style.background = `linear-gradient(180deg, ${myColor}EE 0%, ${myColor}BB 18%, ${myColor}50 50%, var(--bg) 78%)`;
+  // Csapatszínre hangolt háttér
+  el.style.background = `linear-gradient(180deg, ${myColor}33 0%, ${myColor}1a 25%, #020510 60%)`;
+
+  const inv = myTeam?.inventory || [];
+  const canActivate = isActive && !currentTurn.wordRevealed && !timerHasValue;
 
   el.innerHTML = `
-    <!-- Játékkód badge (jobb felső sarok) -->
-    <div style="position:fixed;top:0.55rem;right:0.75rem;z-index:50;
-                background:rgba(2,5,16,0.85);border:1px solid var(--border);
-                border-radius:6px;padding:0.18rem 0.65rem;
-                font-size:0.72rem;letter-spacing:0.18em;
-                color:#3d6a8a;font-weight:700;pointer-events:none">
-      ${_esc(appState.gameCode || '')}
-    </div>
+    ${_ambient()}
+    <main class="relative z-10 w-full max-w-md mx-auto px-margin-mobile py-5 flex flex-col gap-4 min-h-screen">
 
-    <div class="player-game-container">
+      <!-- Header -->
+      <header class="flex justify-between items-center">
+        ${leaveBarHtml()}
+        <div class="glass-panel px-3 py-1 border border-primary/20 rounded font-code-sm text-code-sm">
+          <span class="text-primary opacity-70">SESSION: </span>
+          <span class="text-primary-container font-bold tracking-widest">${_esc(appState.gameCode || '')}</span>
+        </div>
+      </header>
 
-      <!-- Szerep badge -->
-      <span class="player-role-badge ${role}">
-        ${roleLabel}
-      </span>
+      <!-- Role badge -->
+      <section class="glass-panel rounded-r-lg p-4 flex items-center gap-4 relative overflow-hidden"
+               style="border-left:4px solid ${myColor};box-shadow:inset 0 0 15px ${myColor}40">
+        <div class="text-3xl" style="filter:drop-shadow(0 0 8px ${myColor})">${roleEmoji}</div>
+        <div>
+          <h1 class="font-headline-lg-mobile text-headline-lg-mobile uppercase tracking-widest"
+              style="color:${myColor};text-shadow:0 0 6px ${myColor}66">${_esc(myTeam?.name ?? '')}</h1>
+          <p class="font-body-md text-body-md text-on-surface-variant">${roleLabel}</p>
+        </div>
+      </section>
 
-      <!-- Flotta sorrendje -->
+      <!-- Turn order -->
       ${myTeamPlayers.length > 0 ? `
-      <div class="card" style="width:100%;text-align:left;padding:0.75rem 1rem">
-        <h3 style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;
-                   letter-spacing:0.08em;margin-bottom:0.5rem">Flotta sorrendje</h3>
-        ${myTeamPlayers.map(([pid, p]) => {
-          const isMe       = pid === appState.playerId;
-          const isActivePl = pid === activeInMyTeam;
-          const isNextPl   = pid === nextInMyTeam;
-          return `
-            <div style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0;
-                        ${isMe ? 'font-weight:700' : ''}">
-              <span style="width:1.3rem;text-align:center;font-size:0.9rem;flex-shrink:0">
-                ${isActivePl ? '🚀' : isNextPl ? '▶' : ''}
-              </span>
-              <span style="font-size:0.88rem">${_esc(p.name)}</span>
-              ${isMe ? '<span style="font-size:0.7rem;color:var(--text-muted);margin-left:0.4rem">(te)</span>' : ''}
-            </div>`;
-        }).join('')}
-      </div>` : ''}
+      <section class="glass-panel border border-primary/10 rounded-lg p-3">
+        <div class="font-label-md text-label-md text-on-surface-variant uppercase mb-2 text-xs">Flotta sorrendje</div>
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+          ${myTeamPlayers.map(([pid, p], idx) => {
+            const isMe       = pid === appState.playerId;
+            const isActivePl = pid === activeInMyTeam;
+            const isNextPl   = pid === nextInMyTeam;
+            return `<span class="flex items-center gap-1 ${isActivePl ? '' : isNextPl ? 'opacity-70' : 'opacity-40'}">
+                ${isActivePl ? '<span class="material-symbols-outlined text-sm fill" style="color:'+myColor+'">rocket_launch</span>'
+                  : isNextPl ? '<span class="material-symbols-outlined text-xs">play_arrow</span>' : ''}
+                <span class="font-label-md text-label-md ${isMe ? 'font-bold' : ''}">${_esc(p.name)}${isMe ? ' (te)' : ''}</span>
+              </span>${idx < myTeamPlayers.length - 1 ? '<span class="text-outline-variant text-xs">→</span>' : ''}`;
+          }).join('')}
+        </div>
+      </section>` : ''}
 
-      <!-- Aktív csapat / feladat fejléc -->
-      <div class="card text-center" style="width:100%;border-color:${isActive ? myColor : activeColor}">
-        ${isActive
-        ? `<p class="text-muted" style="font-size:0.82rem;margin-bottom:0.25rem">A te k\u00fcldet\u00e9sed</p>
-           <p style="font-size:1.1rem;font-weight:700;color:${myColor}">${_esc(myTeam?.name ?? '')}</p>`
-        : `<p class="text-muted" style="font-size:0.82rem;margin-bottom:0.25rem">Aktív flotta</p>
-           <p style="font-size:1.1rem;font-weight:700;color:${activeColor}">${_esc(activeTeam.name ?? '?')}</p>
-           ${currentTurn.activePlayerId && players[currentTurn.activePlayerId]
-             ? `<p class="text-muted" style="font-size:0.85rem;margin-top:0.2rem">
-                  ${_esc(players[currentTurn.activePlayerId].name)} teljesíti a küldetést
-                </p>`
-             : ''}`
+      <!-- Secret word card -->
+      <section class="glass-panel rounded-xl p-6 text-center relative flex flex-col items-center justify-center min-h-[150px]"
+               style="border:1px solid ${myColor}80;box-shadow:0 0 20px ${myColor}40">
+        <div class="absolute top-2 left-2 w-3 h-3 border-t border-l" style="border-color:${myColor}"></div>
+        <div class="absolute top-2 right-2 w-3 h-3 border-t border-r" style="border-color:${myColor}"></div>
+        <div class="absolute bottom-2 left-2 w-3 h-3 border-b border-l" style="border-color:${myColor}"></div>
+        <div class="absolute bottom-2 right-2 w-3 h-3 border-b border-r" style="border-color:${myColor}"></div>
+        ${isActive && currentTurn.word && currentTurn.wordRevealed
+          ? `<div class="flex items-center gap-2 mb-2 px-3 py-1 rounded-full" style="background:${myColor}1a">
+               <span class="material-symbols-outlined text-sm" style="color:${myColor}">visibility</span>
+               <span class="font-label-md text-label-md" style="color:${myColor}">🤫 Csak te látod!</span>
+             </div>
+             <h2 class="font-display-md text-display-md text-on-surface uppercase tracking-widest drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">${_esc(currentTurn.word)}</h2>`
+          : isActive && !currentTurn.wordRevealed
+            ? `<p class="font-headline-lg-mobile text-headline-lg-mobile text-primary-fixed-dim">🚀 Felkészülés!</p>
+               <p class="font-body-md text-body-md text-on-surface-variant mt-2">Az Irányítóközpont hamarosan felfedi az adatcsomagodat.</p>`
+            : `<span class="material-symbols-outlined text-4xl text-on-surface-variant mb-2">visibility_off</span>
+               <p class="font-body-lg text-body-lg text-on-surface-variant">🙈 Titkos szó rejtve</p>`
         }
-        <div class="task-meta" style="justify-content:center;margin-top:0.6rem">
-          <span>🎯 ${_esc(currentTurn.taskType ?? '–')}</span>
-          <span>⭐ ${currentTurn.points ?? '–'} fényév</span>
+        <div class="flex gap-4 mt-4 text-on-surface-variant">
+          <span class="font-body-md text-body-md">🎯 ${_esc(currentTurn.taskType ?? '–')}</span>
+          <span class="font-body-md text-body-md">⭐ ${currentTurn.points ?? '–'} fényév</span>
         </div>
-      </div>
+      </section>
 
-      <!-- Titkos szó / Felkészülés / Rejtve -->
-      ${isActive && currentTurn.word && currentTurn.wordRevealed
-        ? `<div class="card" style="width:100%;text-align:center;border-color:#fbbf24">
-             <p class="secret-word-label">🤫 Titkosított adatcsomag – csak te látod!</p>
-             <p class="player-word-reveal">${_esc(currentTurn.word)}</p>
-           </div>`
-        : isActive && !currentTurn.wordRevealed
-          ? `<div class="card player-prepare-card" style="width:100%;text-align:center">
-               <p class="player-prepare-msg">🚀 Felkészülés!</p>
-               <p class="player-prepare-sub">Az Irányítóközpont hamarosan felfedi az adatcsomagodat.</p>
-               <p class="player-prepare-sub">Addig menj ki a teremből, ha szükséges!</p>
-             </div>`
-          : `<div class="card text-center" style="width:100%">
-               <p class="player-word-hidden">🙈 A titkos szó rejtve van</p>
-             </div>`
-      }
-
-      <!-- Fejlesztések (Boost) – mindig látható -->
-      ${(() => {
-        const inv = myTeam?.inventory || [];
-        const canActivate = isActive && !currentTurn.wordRevealed && !timerHasValue;
-        return `
-          <div class="card" style="width:100%">
-            <h3 style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;
-                       letter-spacing:0.08em;margin-bottom:0.6rem">Flotta arzenál</h3>
-            <div class="boost-inventory" style="flex-direction:column;align-items:flex-start">
-              ${inv.length === 0
-                ? '<span style="font-size:0.82rem;color:var(--text-muted)">Nincs fejlesztés</span>'
-                : inv.map((bid, bidx) => {
-                    const bt = BOOST_TYPES[bid] || { emoji: '?', name: bid };
-                    if (!canActivate || bid === 'shield') {
-                      return `<span class="boost-chip boost-chip--${bid}" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>`;
-                    }
-                    if (bid === 'trap') {
-                      const boardLen = game.settings?.boardLength || 30;
-                      return `<div class="boost-activate-row">
-                        <span class="boost-chip boost-chip--trap" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
-                        <input type="number" min="0" max="${boardLen}" placeholder="Mező #"
-                               class="trap-cell-input">
-                        <button class="btn btn-warning trap-place-btn"
-                                style="font-size:0.82rem;padding:.35rem .75rem"
-                                data-bidx="${bidx}">🕳️ Lerakás</button>
-                      </div>`;
-                    }
-                    if (bid === 'torpedo') {
-                      return `<div class="boost-activate-row">
-                        <span class="boost-chip boost-chip--torpedo" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
-                        <select class="torpedo-target-sel" data-bidx="${bidx}">
-                          ${teams.map((t, ti) => ti === myTeamIdx ? '' :
-                            `<option value="${ti}">${_esc(t.name)}</option>`).join('')}
-                        </select>
-                        <button class="btn btn-danger torpedo-fire-btn"
-                                style="font-size:0.82rem;padding:.35rem .75rem"
-                                data-bidx="${bidx}">🚀 Tüzelés</button>
-                      </div>`;
-                    }
-                    if (bid === 'warp') {
-                      return `<div class="boost-activate-row">
-                        <span class="boost-chip boost-chip--warp" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
-                        <button class="btn btn-primary warp-btn"
-                                style="font-size:0.82rem;padding:.35rem .75rem"
-                                data-bidx="${bidx}">⚡ Aktiválás</button>
-                      </div>`;
-                    }
-                    if (bid === 'timewarp') {
-                      return `<div class="boost-activate-row">
-                        <span class="boost-chip boost-chip--timewarp" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>
-                        <button class="btn btn-primary timewarp-btn"
-                                style="font-size:0.82rem;padding:.35rem .75rem"
-                                data-bidx="${bidx}">⏳ Aktiválás</button>
-                      </div>`;
-                    }
-                    return '';
-                  }).join('')
-              }
-            </div>
-          </div>`;
-      })()}
-
-      <!-- Részletes nézet panel -->
-      <div class="details-panel">
-      <button class="details-toggle-btn" id="pg-details-toggle">🔽 Részletes nézet</button>
-
-      <!-- Részletes szekció: timer + csillagtérkép -->
-      <div id="pg-details-section" ${_detailsOpen ? '' : 'hidden'} class="details-section">
-
-      <!-- Timer -->
-      <div class="card text-center" style="width:100%;padding:1.25rem">
-        <div id="pg-timer" class="host-timer-display ${phaseInfo.colorClass}">
-          ${formatTime(phaseInfo.secondsLeft)}
+      <!-- Fleet arsenal -->
+      <section>
+        <h3 class="font-label-md text-label-md text-primary opacity-70 mb-2 tracking-widest flex items-center gap-2 text-xs uppercase">
+          <span class="material-symbols-outlined text-sm">build</span> Flotta arzenál
+        </h3>
+        <div class="flex flex-col gap-2">
+          ${inv.length === 0
+            ? '<span class="font-body-md text-body-md text-on-surface-variant">Nincs fejlesztés</span>'
+            : inv.map((bid, bidx) => {
+                const bt = BOOST_TYPES[bid] || { emoji: '?', name: bid };
+                if (!canActivate || bid === 'shield') {
+                  return `<div class="glass-panel border border-outline-variant/30 rounded-lg p-3 flex items-center gap-2 ${bid === 'shield' ? '' : 'opacity-50'}">
+                    <span class="text-xl">${bt.emoji}</span>
+                    <span class="font-label-md text-label-md text-on-surface-variant">${_esc(bt.name)}${bid === 'shield' ? ' (passzív)' : ''}</span>
+                  </div>`;
+                }
+                if (bid === 'trap') {
+                  return `<div class="boost-activate-row glass-panel border border-primary/20 rounded-lg p-3 flex flex-wrap items-center gap-2 outer-glow-cyan">
+                    <span class="text-xl">${bt.emoji}</span>
+                    <span class="font-label-md text-label-md text-on-surface flex-1">${_esc(bt.name)}</span>
+                    <input type="number" min="0" max="${boardLen}" placeholder="Mező #"
+                           class="trap-cell-input w-24 bg-surface-container border border-outline-variant rounded px-2 py-1 text-on-surface">
+                    <button class="trap-place-btn bg-tertiary-container text-on-tertiary-container px-3 py-1.5 rounded font-label-md text-label-md" data-bidx="${bidx}">🕳️ Lerakás</button>
+                  </div>`;
+                }
+                if (bid === 'torpedo') {
+                  return `<div class="boost-activate-row glass-panel border border-primary/20 rounded-lg p-3 flex flex-wrap items-center gap-2 outer-glow-cyan">
+                    <span class="text-xl">${bt.emoji}</span>
+                    <span class="font-label-md text-label-md text-on-surface flex-1">${_esc(bt.name)}</span>
+                    <select class="torpedo-target-sel bg-surface-container border border-outline-variant rounded px-2 py-1 text-on-surface" data-bidx="${bidx}">
+                      ${teams.map((t, ti) => ti === myTeamIdx ? '' : `<option value="${ti}">${_esc(t.name)}</option>`).join('')}
+                    </select>
+                    <button class="torpedo-fire-btn bg-error text-on-error px-3 py-1.5 rounded font-label-md text-label-md" data-bidx="${bidx}">🚀 Tüzelés</button>
+                  </div>`;
+                }
+                if (bid === 'warp') {
+                  return `<div class="boost-activate-row glass-panel border border-primary/20 rounded-lg p-3 flex items-center gap-2 outer-glow-cyan">
+                    <span class="text-xl">${bt.emoji}</span>
+                    <span class="font-label-md text-label-md text-on-surface flex-1">${_esc(bt.name)}</span>
+                    <button class="warp-btn bg-primary-container text-on-primary-container px-3 py-1.5 rounded font-label-md text-label-md" data-bidx="${bidx}">⚡ Aktiválás</button>
+                  </div>`;
+                }
+                if (bid === 'timewarp') {
+                  return `<div class="boost-activate-row glass-panel border border-primary/20 rounded-lg p-3 flex items-center gap-2 outer-glow-cyan">
+                    <span class="text-xl">${bt.emoji}</span>
+                    <span class="font-label-md text-label-md text-on-surface flex-1">${_esc(bt.name)}</span>
+                    <button class="timewarp-btn bg-primary-container text-on-primary-container px-3 py-1.5 rounded font-label-md text-label-md" data-bidx="${bidx}">⏳ Aktiválás</button>
+                  </div>`;
+                }
+                return '';
+              }).join('')}
         </div>
-        <div id="pg-label" class="phase-label ${phaseInfo.colorClass}" style="margin-top:0.5rem">
-          ${timerStartedAt ? phaseInfo.label : (timerHasValue ? 'Adatátvitel szüneteltetve' : 'Adatátvitel még nem indult')}
-        </div>
-      </div>
-      <!-- Táblaállás (kompakt) -->
-      <div class="card" style="width:100%">
-        <h3 style="font-size:0.8rem;color:var(--text-muted);text-transform:uppercase;
-                   letter-spacing:0.08em;margin-bottom:0.6rem">Csillagtérkép állása</h3>
-        ${teams.map((t, i) => {
-          const boardLen = game.settings?.boardLength || 30;
-          const pct = Math.min(100, Math.round((t.score / boardLen) * 100));
-          return `
-            <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.45rem">
-              <span style="width:8px;height:8px;border-radius:50%;background:${TEAM_COLORS[i]};
-                           flex-shrink:0"></span>
-              <span style="flex:1;font-size:0.88rem;
-                           ${i === myTeamIdx ? 'font-weight:700' : ''}">${_esc(t.name)}</span>
-              <div style="flex:2;background:var(--border);border-radius:3px;height:6px;overflow:hidden">
-                <div style="height:100%;width:${pct}%;background:${TEAM_COLORS[i]};
-                            transition:width 0.5s"></div>
+      </section>
+
+      <!-- Collapsible details (timer + standings) -->
+      <section class="mt-auto">
+        <div class="glass-panel border border-primary/10 rounded-lg overflow-hidden">
+          <button id="pg-details-toggle" class="flex justify-between items-center p-4 w-full hover:bg-surface-container-highest/40 transition-colors">
+            <div class="flex items-center gap-3">
+              <div class="relative w-12 h-12 flex items-center justify-center">
+                <svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="46" fill="transparent" stroke="#2f3639" stroke-width="5"></circle>
+                  <circle id="pg-ring" cx="50" cy="50" r="46" fill="transparent" stroke="${timerColor}" stroke-width="5"
+                          stroke-linecap="round" stroke-dasharray="${RING_C}" stroke-dashoffset="${ringOffset}"
+                          style="transition:stroke-dashoffset 1s linear, stroke 0.3s"></circle>
+                </svg>
+                <span id="pg-timer" class="font-code-sm text-code-sm font-bold" style="color:${timerColor}">${formatTime(phaseInfo.secondsLeft)}</span>
               </div>
-              <span style="font-weight:700;min-width:1.5rem;text-align:right">${t.score}</span>
-            </div>`;
-        }).join('')}
-      </div>
-
-      </div><!-- /pg-details-section -->
-      </div><!-- /details-panel -->
-
-    </div>
+              <div class="text-left">
+                <div id="pg-label" class="font-label-md text-label-md uppercase" style="color:${timerColor}">${timerStartedAt ? phaseInfo.label : (timerHasValue ? 'Szüneteltetve' : 'Még nem indult')}</div>
+                <div class="font-code-sm text-code-sm text-on-surface-variant">Csillagtérkép állása</div>
+              </div>
+            </div>
+            <span class="material-symbols-outlined text-outline transition-transform ${_detailsOpen ? 'rotate-180' : ''}">expand_more</span>
+          </button>
+          <div id="pg-details-section" style="${_detailsOpen ? '' : 'display:none'}" class="p-4 border-t border-primary/10 grid grid-cols-2 gap-3">
+            ${teams.map((t, i) => {
+              const pct = Math.min(100, Math.round((t.score / boardLen) * 100));
+              return `
+                <div class="flex flex-col gap-1">
+                  <div class="flex justify-between font-code-sm text-code-sm">
+                    <span style="color:${TEAM_COLORS[i]}">${_esc(t.name)}</span><span>${t.score}</span>
+                  </div>
+                  <div class="w-full h-1.5 bg-surface-variant rounded-full overflow-hidden">
+                    <div class="h-full" style="width:${pct}%;background:${TEAM_COLORS[i]}"></div>
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </section>
+    </main>
   `;
+
+  wireLeaveBar();
+
   // ── Részletes nézet toggle ───────────────────────────────────
-  {
-    const btn = document.getElementById('pg-details-toggle');
-    if (btn) btn.textContent = _detailsOpen ? '🔼 Részletes nézet elrejtése' : '🔽 Részletes nézet';
-  }
   document.getElementById('pg-details-toggle')?.addEventListener('click', () => {
     const section = document.getElementById('pg-details-section');
-    const btn = document.getElementById('pg-details-toggle');
-    if (!section || !btn) return;
+    const chevron = document.querySelector('#pg-details-toggle .material-symbols-outlined');
+    if (!section) return;
     _detailsOpen = !_detailsOpen;
-    if (_detailsOpen) {
-      section.removeAttribute('hidden');
-      btn.textContent = '🔼 Részletes nézet elrejtése';
-    } else {
-      section.setAttribute('hidden', '');
-      btn.textContent = '🔽 Részletes nézet';
-    }
+    section.style.display = _detailsOpen ? '' : 'none';
+    if (_detailsOpen) chevron?.classList.add('rotate-180'); else chevron?.classList.remove('rotate-180');
   });
 
   // ── Boost aktiválók ─────────────────────────────────────────
@@ -396,14 +389,15 @@ export function renderPlayerGame(game, appState) {
       }
     });
   });
+
   document.querySelectorAll('.trap-place-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const bidx = parseInt(btn.dataset.bidx, 10);
       const input = btn.closest('.boost-activate-row')?.querySelector('.trap-cell-input');
       const cellNum = parseInt(input?.value ?? '', 10);
-      const boardLen = game.settings?.boardLength || 30;
-      if (isNaN(cellNum) || cellNum < 0 || cellNum > boardLen) {
-        showToast('⚠️ Adj meg érvényes mezőszámot (0–' + boardLen + ')!');
+      const boardLenLocal = game.settings?.boardLength || 30;
+      if (isNaN(cellNum) || cellNum < 0 || cellNum > boardLenLocal) {
+        showToast('⚠️ Adj meg érvényes mezőszámot (0–' + boardLenLocal + ')!');
         return;
       }
       if (game.traps?.[String(cellNum)] !== undefined) {
@@ -419,26 +413,26 @@ export function renderPlayerGame(game, appState) {
         _allBoostBtns().forEach(b => b.disabled = false);
       }
     });
-  });  // ── Helyi timer interval ──────────────────────────────────────
+  });
+
+  // ── Helyi timer interval ──────────────────────────────────────
   if (timerStartedAt) {
     _timerInterval = setInterval(() => {
       const timerEl = document.getElementById('pg-timer');
       const labelEl = document.getElementById('pg-label');
+      const ringEl  = document.getElementById('pg-ring');
       if (!timerEl) { clearInterval(_timerInterval); _timerInterval = null; return; }
 
       const info = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive, commDisruptionActive);
-      timerEl.className = `host-timer-display ${info.colorClass}`;
+      const col  = PHASE_HEX[info.colorClass] || '#feb528';
       timerEl.innerHTML = formatTime(info.secondsLeft);
-
-      if (labelEl) {
-        labelEl.className = `phase-label ${info.colorClass}`;
-        labelEl.textContent = info.label;
+      timerEl.style.color = col;
+      if (labelEl) { labelEl.textContent = info.label; labelEl.style.color = col; }
+      if (ringEl) {
+        ringEl.style.stroke = col;
+        ringEl.style.strokeDashoffset = String(Math.max(0, Math.min(RING_C, RING_C * (1 - info.secondsLeft / totalSeconds))));
       }
-
-      if (info.phase >= 4) {
-        clearInterval(_timerInterval);
-        _timerInterval = null;
-      }
+      if (info.phase >= 4) { clearInterval(_timerInterval); _timerInterval = null; }
     }, 1000);
   }
 }

@@ -1,36 +1,33 @@
 /**
- * views/host-game.js – View 4/B: Host Vezérlőpult (teljes implementáció)
- * ════════════════════════════════════════════════════════════════════════
- * - Titkosított adatcsomag kártya + "Adatcsomag újrasorsolása"
- * - Timer: fázisszínes visszaszámlálás (helyi setInterval)
- * - Pontozó gombok (engedélyezve adatátvitel indítás után)
- * - Csillagtérkép állása sávdiagrammal
- * - Következő küldetések + Múlt küldetések
+ * views/host-game.js – View 4/B: Host Vezérlőpult
+ * Holografikus dizájn (Tailwind + Material Symbols). A "playing" állapot
+ * a host-dashboard mockup alapján; a briefing megtartja a hologram képernyőt.
  */
 
-import { showToast }                                     from '../app.js';
+import { showToast, leaveBarHtml, wireLeaveBar }         from '../app.js';
 import { updateGameData }                                from '../firebase-config.js';
 import { rerollCurrentWord }                             from '../logic/turn-manager.js';
 import { awardPoints, awardSharedPoints, endTurnNoScore } from '../logic/scoring.js';
-import { getElapsedMs, getPhaseInfo, formatTime }        from '../logic/timer.js';
+import { getElapsedMs, getPhaseInfo, getTotalSeconds, formatTime } from '../logic/timer.js';
 import { BOOST_TYPES }                                   from '../logic/boosts.js';
 
 const TEAM_COLORS = ['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899'];
+const TEAM_TW = ['red-500','blue-500','green-500','yellow-500','purple-500','pink-500'];
+const PHASE_HEX = { 'phase-0': '#bbc9cf', 'phase-1': '#00e676', 'phase-2': '#ffd600', 'phase-3': '#ff1744' };
+const TASK_EMOJI = { 'rajzolás': '🎨', 'mutogatás': '🤸', 'körülírás': '💬' };
+const RING_C = 283; // 2 * π * 45
 
-// Modul-szintű interval – elkerüli a dupla tickeket re-render esetén
 let _timerInterval = null;
-let _detailsOpen = false;
+let _detailsOpen = true;
 
 export function renderHostGame(game, appState) {
-  // Minden re-rendernél töröljük az előző intervalt
   if (_timerInterval) { clearInterval(_timerInterval); _timerInterval = null; }
 
   const el = document.getElementById('view-host-game');
 
   if (!game) {
-    el.innerHTML = `<div style="margin:auto;text-align:center">
-      <p class="text-muted">Nincs aktív játék.</p>
-    </div>`;
+    el.innerHTML = `<div class="min-h-screen flex items-center justify-center">
+      <p class="text-on-surface-variant">Nincs aktív játék.</p></div>`;
     return;
   }
 
@@ -43,7 +40,8 @@ export function renderHostGame(game, appState) {
     const canLaunch = playerCount >= 1 && allAssigned;
 
     el.innerHTML = `
-      <div style="width:100%;max-width:860px;margin:0 auto;padding:1rem">
+      <div class="w-full max-w-4xl mx-auto p-4">
+        <div class="flex justify-end mb-2">${leaveBarHtml()}</div>
         <div class="briefing-overlay" style="position:relative;min-height:auto;padding:0">
           <div class="briefing-hologram" style="max-height:none">
             <div class="briefing-scanlines"></div>
@@ -107,39 +105,33 @@ export function renderHostGame(game, appState) {
           </div>
         </div>
 
-        <div class="card" style="margin-top:1.5rem;text-align:center">
-          <h3 style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);
-                     margin-bottom:0.75rem;font-family:'Orbitron',monospace">
-            Irányítóközpont Státusz
-          </h3>
-          <p style="font-size:1.1rem;font-weight:600;margin-bottom:0.5rem">
-            Asztronauták a pályán: <span style="color:var(--primary);font-family:'Orbitron',monospace">${playerCount}</span>
+        <div class="holographic-panel rounded-xl p-6 mt-6 text-center flex flex-col gap-4">
+          <h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Irányítóközpont Státusz</h3>
+          <p class="font-body-lg text-body-lg">
+            Asztronauták a pályán: <span class="text-primary-fixed-dim font-display-md">${playerCount}</span>
           </p>
-          ${teams.map((t, i) => {
-            const count = Object.values(players).filter(p => p.teamIndex === i).length;
-            return `<span style="display:inline-block;margin:0.2rem 0.5rem;font-size:0.88rem;color:${TEAM_COLORS[i]}">
-              ${_esc(t.name)}: ${count}
-            </span>`;
-          }).join('')}
-
-          <div style="margin-top:1.25rem">
-            <button class="btn btn-success btn-lg btn-full" id="btn-launch-game"
-              ${canLaunch ? '' : 'disabled'}
-              style="font-size:1.2rem;padding:1rem 2rem">
-              🚀 Első kör indítása
-            </button>
+          <div class="flex flex-wrap justify-center gap-x-4 gap-y-1">
+            ${teams.map((t, i) => {
+              const count = Object.values(players).filter(p => p.teamIndex === i).length;
+              return `<span class="font-body-md text-body-md" style="color:${TEAM_COLORS[i]}">${_esc(t.name)}: ${count}</span>`;
+            }).join('')}
           </div>
-          ${!canLaunch
-            ? `<p class="text-muted" style="font-size:0.82rem;margin-top:0.6rem">
-                 Várj, amíg minden diák belép a játékba!
-               </p>`
-            : `<p style="font-size:0.82rem;margin-top:0.6rem;color:var(--success)">
-                 ✅ Minden asztronauta a fedélzeten! Indíthatod az első kört.
-               </p>`}
+          <button id="btn-launch-game" ${canLaunch ? '' : 'disabled'}
+            class="mt-2 bg-tertiary-container text-on-tertiary-container font-label-md text-label-md uppercase
+                   px-8 py-4 rounded clip-chamfer transition-all flex items-center justify-center gap-2 self-center
+                   hover:shadow-[0_0_15px_rgba(254,181,40,0.6)]
+                   disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none">
+            <span class="material-symbols-outlined">rocket_launch</span> Első kör indítása
+          </button>
+          <p class="font-body-md text-body-md ${canLaunch ? 'text-success' : 'text-on-surface-variant'}"
+             style="${canLaunch ? 'color:#00e676' : ''}">
+            ${canLaunch ? '✅ Minden asztronauta a fedélzeten! Indíthatod az első kört.' : 'Várj, amíg minden diák belép a játékba!'}
+          </p>
         </div>
       </div>
     `;
 
+    wireLeaveBar();
     document.getElementById('btn-launch-game')?.addEventListener('click', async () => {
       const btn = document.getElementById('btn-launch-game');
       if (btn) { btn.disabled = true; btn.textContent = 'Indítás...'; }
@@ -155,9 +147,8 @@ export function renderHostGame(game, appState) {
   }
 
   if (game.status !== 'playing') {
-    el.innerHTML = `<div style="margin:auto;text-align:center">
-      <p class="text-muted">Nincs aktív játék.</p>
-    </div>`;
+    el.innerHTML = `<div class="min-h-screen flex items-center justify-center">
+      <p class="text-on-surface-variant">Nincs aktív játék.</p></div>`;
     return;
   }
 
@@ -181,269 +172,255 @@ export function renderHostGame(game, appState) {
 
   const activeTeam      = teams[currentTurn.teamIndex] || {};
   const activeColor     = TEAM_COLORS[currentTurn.teamIndex] || '#888';
+  const boardLen        = game.settings?.boardLength || 30;
+  const totalSeconds    = getTotalSeconds(timeDilationActive, commDisruptionActive) || 1;
+  const timerColor      = PHASE_HEX[phaseInfo.colorClass] || '#feb528';
+  const ringOffset      = Math.max(0, Math.min(RING_C, RING_C * (1 - phaseInfo.secondsLeft / totalSeconds)));
+
+  const _round = 'w-12 h-12 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center transition-all text-on-surface enabled:hover:bg-primary/20 enabled:hover:border-primary enabled:hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed';
 
   el.innerHTML = `
-    <div style="width:100%;max-width:1400px;margin:0 auto;padding:1rem">
-
-      <!-- ── Fejléc ─────────────────────────────────────────── -->
-      <div style="display:flex;justify-content:space-between;align-items:center;
-                  margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:1px solid var(--border)">
-        <div style="display:flex;align-items:center;gap:1rem">
-          <span style="font-size:0.8rem;color:var(--text-muted)">Kód:</span>
-          <strong style="letter-spacing:0.15em">${appState.gameCode}</strong>
-          <span style="display:flex;align-items:center;gap:0.4rem;font-size:0.88rem">
-            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;
-                         background:${activeColor}"></span>
-            <strong style="color:${activeColor}">${_esc(activeTeam.name ?? '?')}</strong>
-            köre
-            ${currentTurn.activePlayerId && game.players?.[currentTurn.activePlayerId]
-              ? `<span style="color:var(--text-muted)">
-                   – ${_esc(game.players[currentTurn.activePlayerId].name)}
-                 </span>`
-              : ''}
-          </span>
+    <!-- Header -->
+    <header class="fixed top-0 w-full glass-panel border-b border-primary/20 flex justify-between items-center px-gutter h-16 z-40">
+      <div class="flex items-center gap-4">
+        ${leaveBarHtml()}
+        <div class="h-6 w-px bg-outline-variant/50"></div>
+        <div class="font-code-sm text-code-sm uppercase text-on-surface-variant flex items-center gap-2">
+          <span>Kód:</span>
+          <span class="font-display-md text-body-lg text-primary-fixed-dim tracking-[0.1em]">${_esc(appState.gameCode)}</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="hidden sm:flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full" style="background:${activeColor};box-shadow:0 0 8px ${activeColor}"></span>
+          <span class="font-label-md text-label-md" style="color:${activeColor}">${_esc(activeTeam.name ?? '?')}</span>
+          ${currentTurn.activePlayerId && game.players?.[currentTurn.activePlayerId]
+            ? `<span class="text-on-surface-variant">|</span>
+               <span class="font-label-md text-label-md text-primary-fixed">${_esc(game.players[currentTurn.activePlayerId].name)}</span>`
+            : ''}
         </div>
         <div class="proj-menu-wrap" id="projector-menu-wrap">
-          <button class="btn btn-secondary" id="btn-open-projector">🌌 Kivetítő ▾</button>
+          <button id="btn-open-projector"
+            class="flex items-center gap-2 text-primary font-label-md text-label-md uppercase bg-primary-container/10
+                   px-4 py-2 rounded clip-chamfer border border-primary/30 hover:drop-shadow-[0_0_8px_#3cd7ff] transition-all">
+            <span class="material-symbols-outlined">cast</span><span class="hidden sm:inline">Kivetítő</span>
+          </button>
           <div class="proj-menu" id="proj-menu" hidden>
             <button class="proj-menu-item" id="proj-popup">🖥️ Megnyitás felugró ablakban</button>
             <button class="proj-menu-item" id="proj-copy">🔗 Link másolása</button>
           </div>
         </div>
       </div>
+    </header>
 
-      <div class="host-game-layout">
+    <!-- Main -->
+    <main class="mt-16 flex flex-col md:flex-row gap-gutter p-gutter w-full max-w-container-max mx-auto">
 
-        <!-- ── BAL OSZLOP ───────────────────────────────────── -->
-        <div class="host-main">
+      <!-- Left: controls -->
+      <section class="flex-1 flex flex-col gap-gutter min-w-0">
 
-          <!-- Titkosított adatcsomag -->
-          <div class="card secret-word-card" style="border-color:${activeColor}">
-            ${currentTurn.word
-              ? `<div class="secret-word-label">Titkosított adatcsomag</div>
-                 <div class="secret-word">${_esc(currentTurn.word)}</div>
-                 <div class="task-meta">
-                   <span>🎯 ${_esc(currentTurn.taskType || '–')}</span>
-                   <span>⭐ ${currentTurn.points ?? '–'} fényév</span>
-                 </div>`
-              : `<p class="text-muted">Nincs aktív küldés.</p>`
-            }
+        <!-- Secret word card -->
+        <div class="holographic-panel rounded p-6 flex flex-col gap-4 relative" style="border-left:4px solid ${activeColor}">
+          <div class="absolute top-0 right-0 p-2 opacity-20 pointer-events-none">
+            <span class="material-symbols-outlined text-4xl">vpn_key</span>
           </div>
-
-          <!-- Adatcsomag felfedése + Újrasorsolás (csak adatátvitel előtt) -->
-          ${!timerHasValue && currentTurn.word ? `
-            <div style="text-align:center;display:flex;flex-direction:column;gap:0.6rem;align-items:center">
-              ${!wordRevealed ? `
-                <button class="btn-reveal" id="btn-reveal-word">
-                  👁 Adatcsomag felfedése az asztronautának
+          ${currentTurn.word ? `
+            <div class="flex justify-between items-start">
+              <h2 class="font-label-md text-label-md uppercase tracking-widest" style="color:${activeColor}">Aktuális Küldetés</h2>
+              <span class="font-code-sm text-code-sm text-on-surface-variant px-2 py-1 bg-surface-container rounded">${currentTurn.points ?? '–'} Fényév</span>
+            </div>
+            <div class="text-center py-6">
+              <h1 class="font-display-lg text-display-lg text-on-surface tracking-widest drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">${_esc(currentTurn.word)}</h1>
+              <p class="font-body-lg text-body-lg text-primary-fixed-dim mt-2 flex items-center justify-center gap-2">
+                ${TASK_EMOJI[currentTurn.taskType] || '🎯'} ${_esc(currentTurn.taskType || '–')}
+              </p>
+            </div>
+            ${!timerHasValue ? `
+              <div class="flex flex-wrap gap-3 justify-center">
+                ${!wordRevealed ? `
+                  <button id="btn-reveal-word"
+                    class="bg-primary-container text-on-primary-container font-label-md text-label-md uppercase px-6 py-3 rounded clip-chamfer neon-glow-primary transition-all flex items-center gap-2">
+                    <span class="material-symbols-outlined">visibility</span> Szó felfedése
+                  </button>` : `
+                  <span class="font-label-md text-label-md text-success flex items-center gap-2" style="color:#00e676">
+                    <span class="material-symbols-outlined">visibility</span> Felfedve
+                  </span>`}
+                <button id="btn-reroll"
+                  class="border border-primary-container text-primary-container font-label-md text-label-md uppercase px-6 py-3 rounded clip-chamfer hover:bg-primary-container/10 transition-all flex items-center gap-2">
+                  <span class="material-symbols-outlined">autorenew</span> Újrasorsolás
                 </button>
-                <span style="font-size:0.78rem;color:var(--text-muted)">
-                  Az asztronauta még nem látja az adatcsomagot
-                </span>` : ''}
-              <button class="btn btn-secondary" id="btn-reroll">
-                🔀 Adatcsomag újrasorsolása
-              </button>
-            </div>` : ''}
+              </div>` : ''}
+          ` : `<p class="text-on-surface-variant text-center py-8">Nincs aktív küldés.</p>`}
+        </div>
 
-          <!-- Timer kártya -->
-          <div class="card host-timer-section">
-            <div id="hg-timer" class="host-timer-display ${phaseInfo.colorClass}">
-              ${formatTime(phaseInfo.secondsLeft)}
+        <div class="flex flex-col lg:flex-row gap-gutter">
+
+          <!-- Timer card -->
+          <div class="holographic-panel rounded p-6 flex-1 flex flex-col items-center justify-center gap-6">
+            <div class="relative w-44 h-44 flex items-center justify-center">
+              <svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="#2f3639" stroke-width="3"></circle>
+                <circle id="hg-ring" cx="50" cy="50" r="45" fill="none" stroke="${timerColor}" stroke-width="5"
+                        stroke-linecap="round" stroke-dasharray="${RING_C}" stroke-dashoffset="${ringOffset}"
+                        style="transition:stroke-dashoffset 1s linear, stroke 0.3s; filter:drop-shadow(0 0 6px ${timerColor})"></circle>
+              </svg>
+              <span id="hg-timer" class="font-display-md text-display-md" style="color:${timerColor}">${formatTime(phaseInfo.secondsLeft)}</span>
             </div>
-            <div id="hg-label" class="phase-label ${phaseInfo.colorClass}"
-                 style="margin-top:0.6rem">
-              ${timerRunning
-                ? phaseInfo.label
-                : (timerHasValue ? 'Adatátvitel szüneteltetve' : 'Indítsd az adatátvitelt!')}
+            <div id="hg-label" class="font-label-md text-label-md uppercase text-center" style="color:${timerColor}">
+              ${timerRunning ? phaseInfo.label : (timerHasValue ? 'Adatátvitel szüneteltetve' : 'Indítsd az adatátvitelt!')}
             </div>
-            <div class="host-controls" style="margin-top:1rem">
-              <button class="btn btn-success btn-lg" id="btn-start-timer"
-                   ${startEnabled ? '' : 'disabled'}>
-                ${timerHasValue ? '▶ Folytatás' : '▶ Adatátvitel indítása'}
+            <div class="flex gap-3">
+              <button id="btn-start-timer" class="${_round}" title="Indítás / Folytatás" ${startEnabled ? '' : 'disabled'}>
+                <span class="material-symbols-outlined">play_arrow</span>
               </button>
-              <button class="btn btn-warning" id="btn-pause-timer"
-                   ${canPause ? '' : 'disabled'}>
-                ⏸ Szünet
+              <button id="btn-pause-timer" class="${_round}" title="Szünet" ${canPause ? '' : 'disabled'}>
+                <span class="material-symbols-outlined">pause</span>
               </button>
-              <button class="btn btn-danger" id="btn-reset-timer"
-                   ${canReset ? '' : 'disabled'}>
-                ↺ Reset
+              <button id="btn-reset-timer" class="${_round}" title="Reset" ${canReset ? '' : 'disabled'}>
+                <span class="material-symbols-outlined">restart_alt</span>
               </button>
             </div>
           </div>
 
-          <!-- Pontozó gombok -->
-          <div class="card scoring-section">
-            <h3>
-              Pontozás (fényév)
-              ${!scoringEnabled
-                ? '<span style="font-size:0.78rem;font-weight:400;margin-left:0.4rem">' +
-                  '(adatátvitel indítása után aktív)</span>'
-                : ''}
+          <!-- Scoring panel -->
+          <div class="holographic-panel rounded p-6 flex-1 flex flex-col gap-4">
+            <h3 class="font-label-md text-label-md text-on-surface-variant uppercase">
+              Pontozás ${!scoringEnabled ? '<span class="normal-case tracking-normal opacity-70">(adatátvitel után)</span>' : ''}
             </h3>
-            <div class="scoring-btns">
-              ${teams.map((t, i) => `
-                <button class="btn ${i === currentTurn.teamIndex ? 'btn-success' : 'btn-secondary'}
-                               score-btn"
-                        data-team="${i}"
-                        ${scoringEnabled ? '' : 'disabled'}>
-                  ✅ ${_esc(t.name)} visszafejtette
-                  <span style="opacity:0.75;margin-left:0.3rem">
-                    (+${currentTurn.points ?? '?'} fényév)
-                    ${i === currentTurn.teamIndex ? '⭐' : '⚡ elfogott'}
-                  </span>
-                </button>`).join('')}
-              <button class="btn btn-danger score-btn-noscore"
-                      id="btn-no-score" ${scoringEnabled ? '' : 'disabled'}>
-                ❌ Senki sem fejtette vissza
-              </button>
+            <div class="grid grid-cols-2 gap-2">
+              ${teams.map((t, i) => {
+                const isActive = i === currentTurn.teamIndex;
+                return `<button class="score-btn py-2 px-2 rounded text-center transition-all font-label-md text-label-md border
+                          ${isActive ? 'border-success text-success bg-green-500/15' : 'border-outline-variant text-on-surface bg-surface-container hover:bg-surface-variant'}"
+                          style="${isActive ? 'border-color:#00e676;color:#00e676' : `border-color:${TEAM_COLORS[i]}55`}"
+                          data-team="${i}" ${scoringEnabled ? '' : 'disabled'} title="${isActive ? '⭐ saját' : '⚡ elfogott'} (+${currentTurn.points ?? '?'})">
+                          ${_esc(t.name)}
+                        </button>`;
+              }).join('')}
             </div>
+            <button id="btn-no-score" ${scoringEnabled ? '' : 'disabled'}
+              class="w-full bg-surface-container border border-outline-variant text-on-surface-variant py-2 rounded
+                     hover:bg-surface-variant hover:text-on-surface transition-all font-label-md text-label-md
+                     flex justify-center items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+              <span class="material-symbols-outlined">block</span> Senki sem fejtette meg
+            </button>
 
-            <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
-              <div style="display:flex;align-items:baseline;gap:0.6rem;margin-bottom:0.7rem">
-                <h4 style="font-size:0.92rem;margin:0">Megosztott fényévek</h4>
-                <span style="font-size:0.78rem;color:var(--text-muted)">
-                  A pontok a kijelölt csapatok között egyenlően oszlanak, lefelé kerekítve.
-                </span>
+            <div class="border-t border-outline-variant/40 pt-3">
+              <div class="flex items-baseline gap-2 mb-2">
+                <h4 class="font-label-md text-label-md text-on-surface-variant">Megosztott fényévek</h4>
+                <span class="font-code-sm text-code-sm text-on-surface-variant normal-case tracking-normal">egyenlően, lefelé kerekítve</span>
               </div>
-              <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem">
+              <div class="flex flex-wrap gap-2 mb-3">
                 ${teams.map((t, i) => `
-                  <label style="display:flex;align-items:center;gap:0.45rem;padding:0.45rem 0.8rem;
-                                 background:var(--surface-2);border:1px solid var(--border);
-                                 border-radius:999px;cursor:pointer">
-                    <input type="checkbox" class="shared-score-check" value="${i}" ${scoringEnabled ? '' : 'disabled'}>
-                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${TEAM_COLORS[i]}"></span>
-                    ${_esc(t.name)}
+                  <label class="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-container border border-outline-variant cursor-pointer text-on-surface font-code-sm text-code-sm">
+                    <input type="checkbox" class="shared-score-check accent-primary-container" value="${i}" ${scoringEnabled ? '' : 'disabled'}>
+                    <span class="w-2 h-2 rounded-full" style="background:${TEAM_COLORS[i]}"></span>${_esc(t.name)}
                   </label>`).join('')}
               </div>
-              <button class="btn btn-primary" id="btn-award-shared" ${scoringEnabled ? '' : 'disabled'}>
-                🤝 Megosztott fényévek rögzítése
+              <button id="btn-award-shared" ${scoringEnabled ? '' : 'disabled'}
+                class="bg-primary-container/80 text-on-primary-container py-2 px-4 rounded font-label-md text-label-md
+                       flex items-center gap-2 hover:bg-primary-container transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                <span class="material-symbols-outlined">handshake</span> Megosztott rögzítése
               </button>
             </div>
           </div>
+        </div>
 
-          <!-- Flotta arzenálok – pontozás alatt -->
-          <div class="card dashboard-section">
-            <h3>Flotta arzenálok</h3>
+        <!-- Fleet arsenals -->
+        <div class="holographic-panel rounded p-6">
+          <h3 class="font-label-md text-label-md text-on-surface-variant uppercase mb-4">Flotta arzenálok</h3>
+          <div class="flex flex-col gap-3">
             ${teams.map((t, i) => {
               const inv = t.inventory || [];
               return `
-                <div style="margin-bottom:0.6rem">
-                  <span style="font-weight:600;color:${TEAM_COLORS[i]};font-size:0.88rem">${_esc(t.name)}</span>
-                  <div class="boost-inventory">
-                    ${inv.length === 0
-                      ? '<span style="font-size:0.78rem;color:var(--text-muted)">Nincs fejlesztés</span>'
-                      : inv.map((bid, bidx) => {
-                          const bt = BOOST_TYPES[bid] || { emoji: '?', name: bid };
-                          return `<span class="boost-chip boost-chip--${bid}" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>`;
-                        }).join('')
-                    }
-                  </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="font-label-md text-label-md min-w-[5rem]" style="color:${TEAM_COLORS[i]}">${_esc(t.name)}</span>
+                  ${inv.length === 0
+                    ? '<span class="font-code-sm text-code-sm text-on-surface-variant">Nincs fejlesztés</span>'
+                    : inv.map((bid) => {
+                        const bt = BOOST_TYPES[bid] || { emoji: '?', name: bid };
+                        return `<span class="boost-chip boost-chip--${bid}" tabindex="0" data-tooltip="${_esc(bt.description || '')}">${bt.emoji} ${_esc(bt.name)}</span>`;
+                      }).join('')}
                 </div>`;
             }).join('')}
           </div>
+        </div>
+      </section>
 
-        </div><!-- /host-main -->
+      <!-- Right: details sidebar -->
+      <aside class="w-full md:w-80 flex-shrink-0">
+        <div class="holographic-panel rounded p-6 flex flex-col gap-4">
+          <button id="host-details-toggle" class="font-headline-lg text-headline-lg-mobile text-primary flex items-center justify-between gap-2 w-full">
+            <span class="flex items-center gap-2"><span class="material-symbols-outlined">explore</span> Részletek</span>
+            <span class="material-symbols-outlined transition-transform ${_detailsOpen ? 'rotate-180' : ''}">expand_more</span>
+          </button>
 
-        <!-- ── JOBB OLDALSÁV ─────────────────────────────────── -->
-        <div class="host-sidebar">
+          <div id="host-details-section" style="${_detailsOpen ? '' : 'display:none'}" class="flex flex-col gap-6">
 
-          <!-- Részletes nézet panel -->
-          <div class="details-panel">
-          <button class="details-toggle-btn" id="host-details-toggle">🔽 Részletes nézet</button>
-
-          <!-- Részletes szekció -->
-          <div id="host-details-section" ${_detailsOpen ? '' : 'hidden'} class="details-section">
-
-          <!-- Csillagtérkép állása -->
-          <div class="card dashboard-section">
-            <h3>Csillagtérkép állása</h3>
-            ${teams.map((t, i) => {
-              const boardLen = game.settings?.boardLength || 30;
-              const pct = Math.min(100, Math.round((t.score / boardLen) * 100));
-              return `
-                <div style="margin-bottom:0.75rem">
-                  <div style="display:flex;justify-content:space-between;
-                              align-items:center;margin-bottom:0.3rem">
-                    <span style="font-weight:600;color:${TEAM_COLORS[i]}">${_esc(t.name)}</span>
-                    <span style="font-weight:800">${t.score}
-                      <span style="color:var(--text-muted);font-size:0.8rem;font-weight:400">
-                        / ${boardLen}
-                      </span>
-                    </span>
-                  </div>
-                  <div style="background:var(--border);border-radius:4px;
-                              height:8px;overflow:hidden">
-                    <div style="height:100%;width:${pct}%;background:${TEAM_COLORS[i]};
-                                transition:width 0.5s"></div>
-                  </div>
-                </div>`;
-            }).join('')}
-          </div>
-
-          <!-- Fejlesztések (Boost) szekció -->
-
-          <!-- Következő küldetések -->
-          <div class="card dashboard-section">
-            <h3>Következő küldetések</h3>
-            <div class="upcoming-list">
-              ${Array.isArray(game.upcomingTurns) && game.upcomingTurns.length > 0
-                ? game.upcomingTurns.slice(0, 3).map(t => `
-                    <div class="upcoming-item">
-                      <span class="upcoming-word">${_esc(t.word)}</span>
-                      <span class="upcoming-meta">${_esc(t.taskType)} · ${t.points} fényév</span>
-                    </div>`).join('')
-                : '<p class="text-muted" style="font-size:0.85rem">Nincs előre generált küldetés</p>'
-              }
+            <div>
+              <h4 class="font-label-md text-label-md text-on-surface-variant uppercase mb-3">Útvonal a Proxima Bázisig</h4>
+              <div class="flex flex-col gap-3">
+                ${teams.map((t, i) => {
+                  const pct = Math.min(100, Math.round((t.score / boardLen) * 100));
+                  return `
+                    <div>
+                      <div class="flex justify-between font-code-sm text-code-sm text-on-surface mb-1">
+                        <span style="color:${TEAM_COLORS[i]}">${_esc(t.name)}</span>
+                        <span>${t.score} / ${boardLen}</span>
+                      </div>
+                      <div class="h-2 w-full bg-surface-container rounded overflow-hidden">
+                        <div class="h-full" style="width:${pct}%;background:${TEAM_COLORS[i]};box-shadow:0 0 8px ${TEAM_COLORS[i]};transition:width 0.5s"></div>
+                      </div>
+                    </div>`;
+                }).join('')}
+              </div>
             </div>
-          </div>
 
-          <!-- Múlt küldetések -->
-          <div class="card dashboard-section">
-            <h3>Múlt küldetések</h3>
-            <div class="history-list">
-              ${Array.isArray(game.turnHistory) && game.turnHistory.length > 0
-                ? [...game.turnHistory].reverse().slice(0, 15).map(h => `
-                    <div class="history-item">
-                      <span class="history-word" title="${_esc(h.word)}">${_esc(h.word)}</span>
-                      <span class="history-result ${h.result || 'unsolved'}">
-                        ${h.result === 'solved'   ? '✓ kitalálva'
-                        : h.result === 'stolen'   ? '⚡ elfogott'
-                        : h.result === 'shared'   ? '🤝 megosztva'
-                        :                           '✗ nem fejtette vissza'}
-                      </span>
-                    </div>`).join('')
-                : '<p class="text-muted" style="font-size:0.85rem">Még nincs lezárt küldetés</p>'
-              }
+            <div>
+              <h4 class="font-label-md text-label-md text-on-surface-variant uppercase mb-3">Következő küldetések</h4>
+              <ul class="flex flex-col gap-2">
+                ${Array.isArray(game.upcomingTurns) && game.upcomingTurns.length > 0
+                  ? game.upcomingTurns.slice(0, 3).map(t => `
+                      <li class="flex justify-between items-center bg-surface-container p-2 rounded border border-outline-variant/30">
+                        <span class="font-body-md text-body-md text-on-surface">${_esc(t.word)}</span>
+                        <span class="font-code-sm text-code-sm text-on-surface-variant">${_esc(t.taskType)} · ${t.points}</span>
+                      </li>`).join('')
+                  : '<li class="font-code-sm text-code-sm text-on-surface-variant">Nincs előre generált küldetés</li>'}
+              </ul>
             </div>
+
+            <div>
+              <h4 class="font-label-md text-label-md text-on-surface-variant uppercase mb-3">Előzmények</h4>
+              <div class="flex flex-col gap-2 font-code-sm text-code-sm">
+                ${Array.isArray(game.turnHistory) && game.turnHistory.length > 0
+                  ? [...game.turnHistory].reverse().slice(0, 15).map(h => {
+                      const c = TEAM_COLORS[h.winnerTeamIndex] || '#bbc9cf';
+                      const verb = h.result === 'solved' ? 'megfejtette' : h.result === 'stolen' ? 'ellopta' : h.result === 'shared' ? 'megosztva' : 'nem fejtette meg';
+                      return `<div class="flex items-center gap-2 text-on-surface">
+                        <span class="px-1 rounded border" style="color:${c};border-color:${c}">${_esc((teams[h.winnerTeamIndex]?.name || '—')).toUpperCase()}</span>
+                        <span class="${h.result === 'stolen' ? 'text-tertiary-fixed-dim' : ''}">${verb}: ${_esc(h.word)}</span>
+                      </div>`;
+                    }).join('')
+                  : '<p class="text-on-surface-variant">Még nincs lezárt küldetés</p>'}
+              </div>
+            </div>
+
           </div>
-
-          </div><!-- /host-details-section -->
-          </div><!-- /details-panel -->
-
-        </div><!-- /host-sidebar -->
-      </div>
-    </div>
+        </div>
+      </aside>
+    </main>
   `;
 
   // ── Event listeners ──────────────────────────────────────────
+  wireLeaveBar();
 
-  {
-    const btn = document.getElementById('host-details-toggle');
-    if (btn) btn.textContent = _detailsOpen ? '🔼 Részletes nézet elrejtése' : '🔽 Részletes nézet';
-  }
   document.getElementById('host-details-toggle')?.addEventListener('click', () => {
     const section = document.getElementById('host-details-section');
-    const btn = document.getElementById('host-details-toggle');
-    if (!section || !btn) return;
+    const chevron = document.querySelector('#host-details-toggle .material-symbols-outlined:last-child');
+    if (!section) return;
     _detailsOpen = !_detailsOpen;
-    if (_detailsOpen) {
-      section.removeAttribute('hidden');
-      btn.textContent = '🔼 Részletes nézet elrejtése';
-    } else {
-      section.setAttribute('hidden', '');
-      btn.textContent = '🔽 Részletes nézet';
-    }
+    section.style.display = _detailsOpen ? '' : 'none';
+    if (_detailsOpen) chevron?.classList.add('rotate-180'); else chevron?.classList.remove('rotate-180');
   });
 
   {
@@ -484,9 +461,7 @@ export function renderHostGame(game, appState) {
     const btn = document.getElementById('btn-reveal-word');
     if (btn) btn.disabled = true;
     try {
-      await updateGameData(appState.gameCode, {
-        'currentTurn/wordRevealed': true,
-      });
+      await updateGameData(appState.gameCode, { 'currentTurn/wordRevealed': true });
     } catch (err) {
       showToast('Hiba: ' + err.message);
       const b = document.getElementById('btn-reveal-word');
@@ -608,21 +583,19 @@ export function renderHostGame(game, appState) {
     _timerInterval = setInterval(() => {
       const timerEl = document.getElementById('hg-timer');
       const labelEl = document.getElementById('hg-label');
+      const ringEl  = document.getElementById('hg-ring');
       if (!timerEl) { clearInterval(_timerInterval); _timerInterval = null; return; }
 
       const info = getPhaseInfo(timerStartedAt, timerElapsedMs, timeDilationActive, commDisruptionActive);
-      timerEl.className = `host-timer-display ${info.colorClass}`;
+      const col  = PHASE_HEX[info.colorClass] || '#feb528';
       timerEl.innerHTML = formatTime(info.secondsLeft);
-
-      if (labelEl) {
-        labelEl.className = `phase-label ${info.colorClass}`;
-        labelEl.textContent = info.label;
+      timerEl.style.color = col;
+      if (labelEl) { labelEl.textContent = info.label; labelEl.style.color = col; }
+      if (ringEl) {
+        ringEl.style.stroke = col;
+        ringEl.style.strokeDashoffset = String(Math.max(0, Math.min(RING_C, RING_C * (1 - info.secondsLeft / totalSeconds))));
       }
-
-      if (info.phase >= 4) {
-        clearInterval(_timerInterval);
-        _timerInterval = null;
-      }
+      if (info.phase >= 4) { clearInterval(_timerInterval); _timerInterval = null; }
     }, 1000);
   }
 }
