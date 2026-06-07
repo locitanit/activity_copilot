@@ -174,6 +174,17 @@ export async function appendBoostLog(code, entry, cap = 500) {
   await update(ref(db), { [`games/${code}/boostLog`]: log });
 }
 
+/**
+ * Egyszeri olvasás az eseménynaplóról (a torpedó atomi írásához kell).
+ * @param {string} code
+ * @returns {Promise<Array>}
+ */
+export async function getBoostLog(code) {
+  const snap = await get(ref(db, `games/${code}/boostLog`));
+  const raw = snap.val();
+  return Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? Object.values(raw) : []);
+}
+
 /** Törli az összes játékot az adatbázisból. */
 export async function deleteAllGames() {
   await set(ref(db, 'games'), null);

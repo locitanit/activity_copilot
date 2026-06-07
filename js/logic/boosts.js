@@ -4,7 +4,7 @@
  * Boost típusok, szerzés, aktiválás, csapda- és pajzslogika.
  */
 
-import { updateGameData, appendBoostLog } from '../firebase-config.js';
+import { updateGameData, appendBoostLog, getBoostLog } from '../firebase-config.js';
 
 // ── Boost definíciók ──────────────────────────────────────────
 export const BOOST_TYPES = {
@@ -147,13 +147,21 @@ export async function activateTorpedo(gameCode, game, firingTeamIndex, targetTea
     logMsg = `🚀 ${firingTeam.name} torpedója elkerülte ${targetTeam.name} flottáját – nem talált!`;
   }
 
-  await updateGameData(gameCode, updates);
-  await addBoostLog(gameCode, game, logMsg, {
+  // ── Atomi írás: a pont-/inventory-változás ÉS a napló-bejegyzés EGY
+  //    snapshotban érkezzen a kivetítőhöz, hogy a célpont hátralépését
+  //    az explózió utánra tudja halasztani (előbb robbanás, aztán mozgás).
+  const fx = {
     kind: 'torpedo',
     team: firingTeamIndex,
     target: targetTeamIndex,
     outcome: shielded ? 'shielded' : (damage > 0 ? 'hit' : 'miss'),
-  });
+  };
+  const freshLog = await getBoostLog(gameCode);                 // friss napló (clobber-véd, mint appendBoostLog)
+  const newLog = [...freshLog, { message: logMsg, timestamp: Date.now(), fx }];
+  if (newLog.length > 500) newLog.splice(0, newLog.length - 500);
+  updates.boostLog = newLog;
+
+  await updateGameData(gameCode, updates);
 
   return { hit: damage > 0, damage, shielded };
 }

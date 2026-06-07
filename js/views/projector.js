@@ -613,28 +613,49 @@ function _baseline(game, boardLength) {
 // ── Diff + animáció (mozgás score-diffből, FX broadcast-mezőkből) ──
 function _diffAndAnimate(game, boardLength) {
   const teams = game.teams || [];
+  const log = Array.isArray(game.boostLog) ? game.boostLog : [];
+  if (_fxCursor > log.length) _fxCursor = log.length;   // front-trim védelem
+  const newEntries = log.slice(_fxCursor);
+
+  // Új anomália ebben a snapshotban?
+  const ev = game.anomalyEvent;
+  const newAnomaly = (ev && ev.timestamp && ev.timestamp > _anomalyCursor) ? ev : null;
+  // Féreglyuk: a lépő csapat NEM csúszik, hanem el-/megjelenik (teleport).
+  const wormholeTeam = (newAnomaly && newAnomaly.type === 'wormhole') ? newAnomaly.triggeredByTeamIndex : -1;
+
+  // Torpedó-találat célpontjai: a hátralépésük az explózió UTÁNRA halasztva.
+  const deferredTargets = new Set();
+  for (const e of newEntries) {
+    if (e && e.fx && e.fx.kind === 'torpedo' && e.fx.outcome === 'hit' && e.fx.target != null) {
+      deferredTargets.add(e.fx.target);
+    }
+  }
 
   // 1) Mozgás: minden csapatra, ha a cél-mező változott
   for (let i = 0; i < _shipEls.length; i++) {
+    if (i === wormholeTeam) continue;                   // külön kezeljük (teleport)
     const cell = _clampCell(teams[i] ? teams[i].score : 0, boardLength);
-    if (cell !== _targetCell[i]) _tweenShip(i, cell);
+    if (cell === _targetCell[i]) continue;
+    if (deferredTargets.has(i)) continue;               // torpedó: az explózió indítja
+    _tweenShip(i, cell);
   }
   _applyStacking();
 
+  // 1b) Féreglyuk teleport (a lépő csapat eltűnik az egyik, megjelenik a másik mezőn)
+  if (wormholeTeam >= 0 && teams[wormholeTeam]) {
+    _fxWormholeTeleport(wormholeTeam, _targetCell[wormholeTeam], _clampCell(teams[wormholeTeam].score, boardLength));
+  }
+
   // 2) FX: boostLog "fx" bejegyzések leürítése a kurzortól
-  const log = Array.isArray(game.boostLog) ? game.boostLog : [];
-  if (_fxCursor > log.length) _fxCursor = log.length;   // front-trim védelem
-  for (let k = _fxCursor; k < log.length; k++) {
-    const e = log[k];
+  for (const e of newEntries) {
     if (e && e.fx) _spawnFx(e.fx, game, boardLength);
   }
   _fxCursor = log.length;
 
-  // 3) Anomália FX (timestamp-kapuval)
-  const ev = game.anomalyEvent;
-  if (ev && ev.timestamp && ev.timestamp > _anomalyCursor) {
-    _spawnAnomalyFx(ev, game, boardLength);
-    _anomalyCursor = ev.timestamp;
+  // 3) Anomália FX (a féreglyukat a teleport már elintézte)
+  if (newAnomaly) {
+    if (newAnomaly.type !== 'wormhole') _spawnAnomalyFx(newAnomaly, game, boardLength);
+    _anomalyCursor = newAnomaly.timestamp;
   }
 
   // 4) Kommunikációs zavar felfutó éle
@@ -725,7 +746,7 @@ function _applyStacking() {
 
 // ── Hajó-tween (repülés a csomópont-poligon mentén) ───────────
 function _tweenShip(i, toCell) {
-  if (!_layout) return;
+  if (!_layout || !_shipEls[i]) return;
   if (_shipAnim[i]) { _shipAnim[i].cancel(); _shipAnim[i] = null; }
   _targetCell[i] = toCell;
   if (_reduced) { _placeShip(i); return; }
@@ -758,6 +779,56 @@ function _tweenShip(i, toCell) {
     raf: requestAnimationFrame(tick),
     cancel() { cancelAnimationFrame(this.raf); if (craft) craft.classList.remove('proj-ship--thrusting'); },
   };
+}
+
+// Egy pont kicsit a `cell` mögött (az alacsonyabb mező felé) – a szupernóva-lökéshez.
+function _behindCellXY(cell) {
+  const c = _cellXY(cell);
+  if (!_layout) return c;
+  let bx, by;
+  if (cell > 0) { const prev = _cellXY(cell - 1); bx = prev.x - c.x; by = prev.y - c.y; }
+  else if (_layout.N > 1) { const nx = _cellXY(1); bx = c.x - nx.x; by = c.y - nx.y; }
+  else return c;
+  const L = Math.hypot(bx, by) || 1;
+  const off = (_layout.baseNode || 24) * 1.15;
+  return { x: c.x + bx / L * off, y: c.y + by / L * off };
+}
+
+// ── Féreglyuk teleport: a hajó el-/megjelenik (zsugorodik / nő), nem csúszik ──
+function _fxWormholeTeleport(i, fromCell, toCell) {
+  if (!_layout || !_shipEls[i]) return;
+  if (_shipAnim[i]) { _shipAnim[i].cancel(); _shipAnim[i] = null; }
+  _targetCell[i] = toCell;
+
+  // Örvény egyszerre a kiinduló ÉS az érkező mezőn
+  const pf = _cellXY(fromCell), pt = _cellXY(toCell);
+  _fxWormhole(pf.x, pf.y);
+  if (toCell !== fromCell) _fxWormhole(pt.x, pt.y);
+
+  if (_reduced) { _placeShip(i); return; }
+
+  const w = _shipEls[i];
+  const sw = _layout.shipW, sh = _layout.shipH;
+  const offset = _shipOffset[i] || { dx: 0, dy: 0 };
+  const ax = pf.x + offset.dx, ay = pf.y + offset.dy;
+  const bxx = pt.x + offset.dx, byy = pt.y + offset.dy;
+  const dur = 1600;
+  const start = _now();
+  const handle = { raf: 0, cancel() { cancelAnimationFrame(this.raf); } };
+  _shipAnim[i] = handle;
+
+  const step = (now) => {
+    if (_shipAnim[i] !== handle) return;                // felülírták (új animáció)
+    const p = Math.min(1, (now - start) / dur);
+    let x, y, scale;
+    if (p < 0.5) { const q = p / 0.5; x = ax; y = ay; scale = 1 - q; }   // zsugorodik a kiinduló mezőn
+    else         { const q = (p - 0.5) / 0.5; x = bxx; y = byy; scale = q; } // nő az érkező mezőn
+    w.style.transform = `translate(${(x - sw / 2).toFixed(1)}px, ${(y - sh / 2).toFixed(1)}px) scale(${Math.max(0, scale).toFixed(3)})`;
+    _shipPos[i] = { x, y };
+    if (p < 1) { handle.raf = requestAnimationFrame(step); }
+    else { _shipAnim[i] = null; _placeShip(i); _syncAnomalyModal(); }
+  };
+  handle.raf = requestAnimationFrame(step);
 }
 
 // ── Anomália-felugró kezelése (előbb a mozgás, aztán a popup) ──
@@ -861,9 +932,11 @@ function _fxBounce(i) {
   const craft = _shipCraft[i]; if (!craft) return;
   craft.classList.add('proj-ship--bounce'); setTimeout(() => craft.classList.remove('proj-ship--bounce'), 720);
 }
-function _fxTorpedo(from, to, outcome, targetIdx) {
+// targetMoveCell != null esetén a célpont CSAK az explózió után lép hátra.
+function _fxTorpedo(from, to, outcome, targetIdx, targetMoveCell) {
+  const moveBack = () => { if (targetMoveCell != null) _tweenShip(targetIdx, targetMoveCell); };
   if (_reduced || !_fxLayer) {
-    if (outcome === 'hit') { _fxExplosion(to.x, to.y); _fxHit(targetIdx); }
+    if (outcome === 'hit') { _fxExplosion(to.x, to.y); _fxHit(targetIdx); moveBack(); }
     else if (outcome === 'shielded') { _fxShield(to.x, to.y); }
     return;
   }
@@ -893,8 +966,11 @@ function _fxTorpedo(from, to, outcome, targetIdx) {
     if (p < 1) { requestAnimationFrame(step); }
     else {
       if (el.parentNode) el.parentNode.removeChild(el);
-      if (outcome === 'hit') { _fxExplosion(to.x, to.y); _fxHit(targetIdx); }
-      else if (outcome === 'shielded') { _fxShield(to.x, to.y); }
+      if (outcome === 'hit') {
+        _fxExplosion(to.x, to.y); _fxHit(targetIdx);
+        // Előbb az explózió legyen látható, AZTÁN lép hátra a célpont.
+        setTimeout(moveBack, 380);
+      } else if (outcome === 'shielded') { _fxShield(to.x, to.y); }
     }
   };
   requestAnimationFrame(step);
@@ -904,7 +980,16 @@ function _spawnFx(fx, game, bl) {
   if (!_layout || !_fxLayer || !fx) return;
   switch (fx.kind) {
     case 'boost_gain': { const p = _shipXY(fx.team); _fxBoostPulse(p.x, p.y, TEAM_COLORS[fx.team]); _fxBounce(fx.team); break; }
-    case 'torpedo':    { _fxTorpedo(_shipXY(fx.team), _shipXY(fx.target), fx.outcome, fx.target); break; }
+    case 'torpedo':    {
+      // Találatkor a célpont hátralépését az explózió utánra halasztjuk (lásd _diffAndAnimate defer).
+      let moveCell = null;
+      if (fx.outcome === 'hit' && fx.target != null && game.teams && game.teams[fx.target]) {
+        const c = _clampCell(game.teams[fx.target].score, bl);
+        if (c !== _targetCell[fx.target]) moveCell = c;
+      }
+      _fxTorpedo(_shipXY(fx.team), _shipXY(fx.target), fx.outcome, fx.target, moveCell);
+      break;
+    }
     case 'trap_place': { const p = _cellXY(_clampCell(fx.cell, bl)); _fxMineDrop(p.x, p.y); break; }
     case 'trap_trigger': { const p = _cellXY(_clampCell(fx.cell, bl)); _fxExplosion(p.x, p.y); if (fx.team != null) _fxStun(fx.team); break; }
     case 'shield_block': { const p = (fx.cell != null) ? _cellXY(_clampCell(fx.cell, bl)) : _shipXY(fx.team); _fxShield(p.x, p.y); break; }
@@ -918,11 +1003,20 @@ function _spawnAnomalyFx(ev, game, bl) {
   const ti = ev.triggeredByTeamIndex;
   const cell = (ti != null && teams[ti]) ? _clampCell(teams[ti].score, bl) : Math.floor(bl / 2);
   const p = _cellXY(cell);
+  const affected = Array.isArray(ev.affected) ? ev.affected : null;
   switch (ev.type) {
-    case 'supernova': _fxSupernova(p.x, p.y); break;
-    case 'wormhole':  _fxWormhole(p.x, p.y); break;
+    case 'supernova': {
+      // A robbanás kicsit a (leghátsó) érintett hajó MÖGÖTT – a lökéshullám előrelöki.
+      if (affected && affected.length) {
+        affected.forEach(a => { const b = _behindCellXY(_clampCell(a.from, bl)); _fxSupernova(b.x, b.y); });
+      } else {
+        const b = _behindCellXY(cell); _fxSupernova(b.x, b.y);
+      }
+      break;
+    }
     case 'blackhole': _fxBlackhole(p.x, p.y); break;
     case 'comms':     break;  // a comms FX-et a commDisruptionActive felfutó éle indítja (nincs dupla)
+    // 'wormhole' a _fxWormholeTeleport-ban (teleport), ide nem jut el
     default:          _fxSupernova(p.x, p.y);
   }
 }

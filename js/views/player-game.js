@@ -14,6 +14,7 @@ const RING_C = 289; // 2 * π * 46
 
 let _timerInterval = null;
 let _detailsOpen = false;
+let _tipCloserAttached = false;  // egyszer felfűzött "koppints kívülre → bezár" figyelő
 
 // Csapatszínre hangolt ambient réteg (rács + scanlines + HUD sarkok)
 function _ambient() {
@@ -160,6 +161,14 @@ export function renderPlayerGame(game, appState) {
   const inv = myTeam?.inventory || [];
   const canActivate = isActive && !currentTurn.wordRevealed && !timerHasValue;
 
+  // Boost címke leírás-buborékkal (PC: hover, telefon: koppintás → lásd wireBoostTips)
+  const _boostInfo = (bt, nameText, nameCls, extraCls) =>
+    `<span class="boost-info ${extraCls || ''}" tabindex="0" role="button"
+           data-tooltip="${_esc(bt.description || '')}" aria-label="${_esc(bt.name)} – ${_esc(bt.description || '')}">
+       <span class="text-xl">${bt.emoji}</span>
+       <span class="${nameCls}">${_esc(nameText)}</span>
+     </span>`;
+
   el.innerHTML = `
     ${_ambient()}
     <main class="relative z-10 w-full max-w-md mx-auto px-margin-mobile py-5 flex flex-col gap-4 min-h-screen">
@@ -239,14 +248,12 @@ export function renderPlayerGame(game, appState) {
                 const bt = BOOST_TYPES[bid] || { emoji: '?', name: bid };
                 if (!canActivate || bid === 'shield') {
                   return `<div class="glass-panel border border-outline-variant/30 rounded-lg p-3 flex items-center gap-2 ${bid === 'shield' ? '' : 'opacity-50'}">
-                    <span class="text-xl">${bt.emoji}</span>
-                    <span class="font-label-md text-label-md text-on-surface-variant">${_esc(bt.name)}${bid === 'shield' ? ' (passzív)' : ''}</span>
+                    ${_boostInfo(bt, bt.name + (bid === 'shield' ? ' (passzív)' : ''), 'font-label-md text-label-md text-on-surface-variant')}
                   </div>`;
                 }
                 if (bid === 'trap') {
                   return `<div class="boost-activate-row glass-panel border border-primary/20 rounded-lg p-3 flex flex-wrap items-center gap-2 outer-glow-cyan">
-                    <span class="text-xl">${bt.emoji}</span>
-                    <span class="font-label-md text-label-md text-on-surface flex-1">${_esc(bt.name)}</span>
+                    ${_boostInfo(bt, bt.name, 'font-label-md text-label-md text-on-surface', 'flex-1')}
                     <input type="number" min="0" max="${boardLen}" placeholder="Mező #"
                            class="trap-cell-input w-24 bg-surface-container border border-outline-variant rounded px-2 py-1 text-on-surface">
                     <button class="trap-place-btn bg-tertiary-container text-on-tertiary-container px-3 py-1.5 rounded font-label-md text-label-md" data-bidx="${bidx}">🕳️ Lerakás</button>
@@ -254,8 +261,7 @@ export function renderPlayerGame(game, appState) {
                 }
                 if (bid === 'torpedo') {
                   return `<div class="boost-activate-row glass-panel border border-primary/20 rounded-lg p-3 flex flex-wrap items-center gap-2 outer-glow-cyan">
-                    <span class="text-xl">${bt.emoji}</span>
-                    <span class="font-label-md text-label-md text-on-surface flex-1">${_esc(bt.name)}</span>
+                    ${_boostInfo(bt, bt.name, 'font-label-md text-label-md text-on-surface', 'flex-1')}
                     <select class="torpedo-target-sel bg-surface-container border border-outline-variant rounded px-2 py-1 text-on-surface" data-bidx="${bidx}">
                       ${teams.map((t, ti) => ti === myTeamIdx ? '' : `<option value="${ti}">${_esc(t.name)}</option>`).join('')}
                     </select>
@@ -264,15 +270,13 @@ export function renderPlayerGame(game, appState) {
                 }
                 if (bid === 'warp') {
                   return `<div class="boost-activate-row glass-panel border border-primary/20 rounded-lg p-3 flex items-center gap-2 outer-glow-cyan">
-                    <span class="text-xl">${bt.emoji}</span>
-                    <span class="font-label-md text-label-md text-on-surface flex-1">${_esc(bt.name)}</span>
+                    ${_boostInfo(bt, bt.name, 'font-label-md text-label-md text-on-surface', 'flex-1')}
                     <button class="warp-btn bg-primary-container text-on-primary-container px-3 py-1.5 rounded font-label-md text-label-md" data-bidx="${bidx}">⚡ Aktiválás</button>
                   </div>`;
                 }
                 if (bid === 'timewarp') {
                   return `<div class="boost-activate-row glass-panel border border-primary/20 rounded-lg p-3 flex items-center gap-2 outer-glow-cyan">
-                    <span class="text-xl">${bt.emoji}</span>
-                    <span class="font-label-md text-label-md text-on-surface flex-1">${_esc(bt.name)}</span>
+                    ${_boostInfo(bt, bt.name, 'font-label-md text-label-md text-on-surface', 'flex-1')}
                     <button class="timewarp-btn bg-primary-container text-on-primary-container px-3 py-1.5 rounded font-label-md text-label-md" data-bidx="${bidx}">⏳ Aktiválás</button>
                   </div>`;
                 }
@@ -332,6 +336,26 @@ export function renderPlayerGame(game, appState) {
     section.style.display = _detailsOpen ? '' : 'none';
     if (_detailsOpen) chevron?.classList.add('rotate-180'); else chevron?.classList.remove('rotate-180');
   });
+
+  // ── Boost leírás buborék (PC: hover; telefon: koppintás) ────
+  document.querySelectorAll('.boost-info').forEach(info => {
+    info.addEventListener('click', (e) => {
+      e.preventDefault();
+      const open = info.classList.contains('tip-open');
+      document.querySelectorAll('.boost-info.tip-open').forEach(o => o.classList.remove('tip-open'));
+      if (open) { info.blur(); } else { info.classList.add('tip-open'); }
+    });
+    info.addEventListener('blur', () => info.classList.remove('tip-open'));
+  });
+  // Koppintás bárhová a buborékon kívül → bezárás (egyszer fűzzük fel)
+  if (!_tipCloserAttached) {
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.boost-info')) {
+        document.querySelectorAll('.boost-info.tip-open').forEach(o => o.classList.remove('tip-open'));
+      }
+    });
+    _tipCloserAttached = true;
+  }
 
   // ── Boost aktiválók ─────────────────────────────────────────
   const _allBoostBtns = () => document.querySelectorAll('.torpedo-fire-btn,.warp-btn,.timewarp-btn,.trap-place-btn');

@@ -45,9 +45,9 @@ export function renderLanding() {
         </button>
       </div>
 
-      <!-- Rejtett admin (állomásra kattintás) -->
+      <!-- Rejtett admin (állomásra kattintás) – telefonon elrejtve -->
       <img id="admin-station" src="img/space_station.png" alt=""
-           class="fixed bottom-6 left-6 w-32 h-auto opacity-60 cursor-default select-none pointer-events-auto"
+           class="hidden sm:block fixed bottom-6 left-6 w-32 h-auto opacity-60 cursor-default select-none pointer-events-auto"
            style="animation:orbit-wobble 20s ease-in-out infinite">
     </div>
   `;

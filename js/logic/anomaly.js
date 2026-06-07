@@ -179,6 +179,7 @@ export async function triggerAnomalyEvent(gameCode, game, landingTeamIndex) {
   const updates              = {};
   let   specificDescription  = '';
   let   commDisruptionActive = false;
+  let   affected             = null;  // [{teamIndex, from, to}] – a kivetítő animációjához
 
   // ── Féreglyuk: kétlépéses modal ────────────────────────────
   if (eventId === 'wormhole') {
@@ -239,9 +240,11 @@ export async function triggerAnomalyEvent(gameCode, game, landingTeamIndex) {
       const minScore   = Math.min(...teams.map(t => t.score));
       const newScore   = Math.min(boardLength, minScore + 2);
       const movedNames = [];
+      affected = [];
       teams.forEach((t, i) => {
         if (t.score === minScore) {
           movedNames.push(t.name);
+          affected.push({ teamIndex: i, from: minScore, to: newScore });
           teams[i] = { ...t, score: newScore };
           updates[`teams/${i}/score`] = newScore;
         }
@@ -260,10 +263,12 @@ export async function triggerAnomalyEvent(gameCode, game, landingTeamIndex) {
       const advance = Math.floor(gap / 2);
       if (advance > 0) {
         const movedNames = [];
+        affected = [];
         teams.forEach((t, i) => {
           if (t.score === minScore) {
             movedNames.push(t.name);
             const ns = Math.min(boardLength, t.score + advance);
+            affected.push({ teamIndex: i, from: minScore, to: ns });
             teams[i] = { ...t, score: ns };
             updates[`teams/${i}/score`] = ns;
           }
@@ -306,6 +311,7 @@ export async function triggerAnomalyEvent(gameCode, game, landingTeamIndex) {
     emoji:                event.emoji,
     specificDescription,
     triggeredByTeamIndex: landingTeamIndex,
+    affected:             affected || null,
     timestamp:            Date.now(),
   };
   await updateGameData(gameCode, updates);

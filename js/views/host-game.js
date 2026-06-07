@@ -235,6 +235,8 @@ export function renderHostGame(game, appState) {
               <h1 class="font-display-lg text-display-lg text-on-surface tracking-widest drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">${_esc(currentTurn.word)}</h1>
               <p class="font-body-lg text-body-lg text-primary-fixed-dim mt-2 flex items-center justify-center gap-2">
                 ${TASK_EMOJI[currentTurn.taskType] || '🎯'} ${_esc(currentTurn.taskType || '–')}
+                <span class="text-on-surface-variant">·</span>
+                <span class="text-primary font-bold">${currentTurn.points ?? '–'} fényév</span>
               </p>
             </div>
             ${!timerHasValue ? `

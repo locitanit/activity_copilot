@@ -135,7 +135,9 @@ JSDoc says 6 — it's wrong). All shared state lives under one game object:
                        // entries are { message, timestamp, fx? } — fx drives projector board animations:
                        // { kind:'boost_gain'|'torpedo'|'trap_place'|'trap_trigger'|'shield_block'|'warp'|'timewarp',
                        //   team?, target?, cell?, outcome?:'hit'|'miss'|'shielded' } (added via addBoostLog's 4th arg)
-  anomalyPending, anomalyEvent   // transient anomaly broadcast to the projector (anomalyEvent.type drives anomaly FX)
+  anomalyPending, anomalyEvent   // transient anomaly broadcast to the projector. anomalyEvent:
+                       // { type, name, emoji, specificDescription, triggeredByTeamIndex, timestamp,
+                       //   affected:[{teamIndex,from,to}]|null }  (affected set for supernova/blackhole)
 }
 ```
 
@@ -199,6 +201,13 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
   - **Ships have no ID pip** (color + glow only). **Animations are deliberately slow** (~330ms/cell,
     FX ~1.2–2.5s). The projector **anomaly popup is deferred** (`_syncAnomalyModal`, shown only when
     `!_anyShipAnimating()`) so the landing movement plays fully BEFORE the modal appears.
+  - **Special FX choreography**: supernova blast is placed *behind* each pushed ship (`_behindCellXY`,
+    using `anomalyEvent.affected[].from`) so the wave shoves it forward; **wormhole = teleport**
+    (`_fxWormholeTeleport`: ship shrinks at the entry cell, a wormhole sprite shows on entry AND exit,
+    ship grows at the exit — no path glide); **torpedo hit defers the target's recoil until after the
+    explosion** — for this to work the score change and the `fx` log entry must arrive in ONE snapshot,
+    so `boosts.activateTorpedo` writes them atomically (reads `getBoostLog`, appends, writes score +
+    inventory + boostLog in a single `updateGameData`).
 - **Scoring** (`scoring.js`): own team = "solved", another = "stolen", multiple = "shared"
   (points integer-split, remainder lost). Solving in phase 1 earns a boost. Reaching
   `settings.boardLength` sets `status='finished'` and short-circuits (boosts/traps/anomalies
