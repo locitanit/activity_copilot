@@ -49,10 +49,12 @@ js/firebase-config.js ── ONLY data-access layer: createGame / joinGame /
    │
 js/data/topics.js ────── static word bank (operator-supplied; keys are topic names).
    │
-js/logic/   turn-manager.js  → turn rotation, word draw, next-player, reroll
+js/logic/   turn-manager.js  → turn rotation, word draw, next-player, reroll,
+   │                            switchToNextPlayer (hand the pre-reveal turn to another
+   │                            teammate; bumps the skipped player's turnCount)
    │        timer.js         → pure phase/countdown math (pausable via timerElapsedMs)
    │        scoring.js       → award/stolen/shared points, win check, advance turn
-   │        anomaly.js       → 4 random "space anomaly" events (every 5th cell)
+   │        anomaly.js       → 4 random "space anomaly" events (every Nth cell; N = settings.anomalyEvery, default 5)
    │        boosts.js        → 5 power-ups (torpedo/trap/hyperdrive/timewarp/shield)
    │
 js/views/   landing, join, host-setup, lobby, host-game, projector, player-game, winner
@@ -120,7 +122,7 @@ JSDoc says 6 — it's wrong). All shared state lives under one game object:
   status,         // 'lobby' → 'briefing' → 'playing' → 'finished'
   createdAt,      // serverTimestamp()
   settings: { teamCount, assignmentType:'random'|'manual', teamNames[],
-              boardLength, selectedTopics[], allowedTaskTypes[] },
+              boardLength, anomalyEvery, selectedTopics[], allowedTaskTypes[] },
   players: { <pushId>: { name, teamIndex:-1, turnCount:0 } },     // MAP; teamIndex -1 = unassigned
   teams:   [ { name, score:0, inventory:[], skipNextTurn:false } ], // ARRAY, indexed by teamIndex
   currentTurn: { word, taskType, points, teamIndex, activePlayerId,
@@ -129,8 +131,11 @@ JSDoc says 6 — it's wrong). All shared state lives under one game object:
   upcomingTurns: [],   // queue, refilled to 3
   turnHistory:   [],   // entries: result 'solved'|'stolen'|'shared'|'unsolved', winnerTeamIndex, ...
   traps:    { <cell>: true },
-  boostLog: [],        // capped to last 10; shown on projector event log
-  anomalyPending, anomalyEvent   // transient anomaly broadcast to the projector
+  boostLog: [],        // full event log ("Eseménynapló"); capped to last 500, projector shows last 30 (scrollable)
+                       // entries are { message, timestamp, fx? } — fx drives projector board animations:
+                       // { kind:'boost_gain'|'torpedo'|'trap_place'|'trap_trigger'|'shield_block'|'warp'|'timewarp',
+                       //   team?, target?, cell?, outcome?:'hit'|'miss'|'shielded' } (added via addBoostLog's 4th arg)
+  anomalyPending, anomalyEvent   // transient anomaly broadcast to the projector (anomalyEvent.type drives anomaly FX)
 }
 ```
 
@@ -149,8 +154,8 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
 | Join | `join.js` | — | `#join-code`, `#join-name`, `#btn-join-confirm`, `#btn-join-back` |
 | Host setup | `host-setup.js` | — | `#team-count`, `name=assignmentType`, `.team-name-field`, `#board-length`/`#board-length-val`, `#topics-group`/`name=topic`, `#task-types-group`/`name=taskType`, `#btn-setup-back`, `#btn-create-lobby` |
 | Lobby | `lobby.js` | host / player | `#btn-start-game`, `.team-join-btn[data-team]`, `#btn-leave-game` |
-| Host game | `host-game.js` | briefing / playing | `#btn-launch-game`, `#btn-reveal-word`, `#btn-reroll`, `#hg-timer`/`#hg-label`/`#hg-ring`, `#btn-start-timer`/`#btn-pause-timer`/`#btn-reset-timer`, `.score-btn[data-team]`, `#btn-no-score`, `.shared-score-check`/`#btn-award-shared`, `#host-details-toggle`/`#host-details-section`, `.proj-menu*`, `.boost-chip*`, `#btn-leave-game` |
-| Projector | `projector.js` | lobby/briefing/playing/finished | `#proj-board-area`, `#proj-timer`/`#proj-label`/`#proj-timer-panel`, `.stellar-node`/`.constellation-line`/`.proj-token` |
+| Host game | `host-game.js` | briefing / playing | `#btn-launch-game`, `#btn-reveal-word`, `#btn-next-player` (switch active astronaut, pre-reveal), `#btn-reroll`, `#hg-timer`/`#hg-label`/`#hg-ring`, `#btn-start-timer`/`#btn-pause-timer`/`#btn-reset-timer`, `.score-btn[data-team]`, `#btn-no-score`, `.shared-score-check`/`#btn-award-shared`, `#host-details-toggle`/`#host-details-section`, `.proj-menu*`, `.boost-chip*`, `#btn-leave-game` |
+| Projector | `projector.js` | lobby/briefing/playing/finished | `#proj-board-area` (empty mount — see §7 board engine), `#proj-timer`/`#proj-label`/`#proj-timer-panel`, `.stellar-node`/`.constellation-line`, `.proj-ship`/`.proj-ship-craft`/`.proj-planet`/`.proj-station`/`.proj-mine`, `.proj-fx*` |
 | Player game | `player-game.js` | briefing / playing | `#pg-timer`/`#pg-label`/`#pg-ring`, `#pg-details-toggle`/`#pg-details-section`, `.boost-activate-row`, `.torpedo-target-sel`/`.torpedo-fire-btn`, `.trap-cell-input`/`.trap-place-btn`, `.warp-btn`, `.timewarp-btn` (all `[data-bidx]`), `#btn-leave-game` |
 | Winner | `winner.js` | — | `#btn-new-game-winner` |
 
@@ -166,12 +171,34 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
   `deleteGame()` (kicks everyone via the null-game listener path); player → `removePlayer()`.
   Both call `exitToMenu()` (tear down listener, clear session, back to landing). Winner's
   "Új küldetés" also uses `exitToMenu()`.
-- **Projector board scaling** (`projector.js _layoutStarChart`): the board is generated
-  procedurally for `boardLength+1` cells on a serpentine skeleton, with **seeded
-  jitter + varied star sizes** for an irregular constellation look. Seed = `gameCode + cell
-  index` → the shape is **stable across re-renders/score updates** (only tokens move) and
-  unique per game. Node/token/label sizes scale down as the board grows; re-lays out on a
-  `ResizeObserver`. Verified at boardLength 5 / 30 / 60.
+- **Projector board engine** (`projector.js`, rebuilt 2026-06): the board uses **img assets**
+  — `spaceship_<red|blue|green|yellow|purple|pink>.png` as team ships (side-view, point RIGHT,
+  index = teamIndex), `planet1/2/3.png` as nodes (deterministic per cell), `space_station.png`
+  as the goal (black bg dropped via `mix-blend-mode:screen` — NOT backdrop-filter), `mine.png`
+  on trap cells, and `torpedo/explosion/wormhole/black_hole.png` for FX.
+  - **Why it's not a plain re-render:** the projector rebuilds the whole view innerHTML every
+    Firebase snapshot, which destroys element identity (kills CSS transitions). So a **persistent
+    detached `_stage` node** (sublayers `#proj-static`/`#proj-ships`/`#proj-fx`) is
+    `appendChild`-**moved** into the otherwise-empty `#proj-board-area` each snapshot — a move,
+    not a recreate — so ship `<img>`s and in-flight `requestAnimationFrame` tweens survive.
+    ⚠ **Never write to `#proj-board-area.innerHTML`** or you destroy the stage and all animations.
+  - `computeLayout()` keeps the old serpentine + seeded-jitter math (seed = `gameCode`), giving
+    `cx[]/cy[]/nd[]`. Static layer is only rebuilt when a `W,H,boardLength,trapKeys` signature
+    changes. Module-level state holds `_shipEls/_shipCraft/_shipAnim/_shipPos/_targetCell/_shipOffset`,
+    cursors `_fxCursor/_anomalyCursor/_commPrev`, and `_live`. `_resetStage()` (called on every
+    non-playing branch) cancels all rAF and drops the stage.
+  - **Animations:** movement is detected by **score-diff** vs `_targetCell` (no broadcast field) —
+    ships fly cell-by-cell along the node polyline, rotate to heading (`scaleY` flip so never
+    upside-down), thrust flame, ease-in-out. Boost/anomaly FX are driven by `boostLog[].fx`
+    (drained from `_fxCursor`) and `anomalyEvent.type` (gated by `.timestamp > _anomalyCursor`);
+    comms FX fires on the rising edge of `currentTurn.commDisruptionActive`. **Join-mid-game**
+    baselines the cursors so history is NOT replayed; `prefers-reduced-motion`/≤2 cores → instant.
+  - **Node decoration** (`_buildStaticHTML`): cell 0 = **Earth** (`planet1.png`, used ONLY at start);
+    goal = `space_station.png`; anomaly cells = glowing dot + hazard halo + 🌀; trap cells = `mine.png`;
+    other cells are seeded among **Jupiter/Saturn (sparse ~7.5% each), moon, nebula, or empty dot**.
+  - **Ships have no ID pip** (color + glow only). **Animations are deliberately slow** (~330ms/cell,
+    FX ~1.2–2.5s). The projector **anomaly popup is deferred** (`_syncAnomalyModal`, shown only when
+    `!_anyShipAnimating()`) so the landing movement plays fully BEFORE the modal appears.
 - **Scoring** (`scoring.js`): own team = "solved", another = "stolen", multiple = "shared"
   (points integer-split, remainder lost). Solving in phase 1 earns a boost. Reaching
   `settings.boardLength` sets `status='finished'` and short-circuits (boosts/traps/anomalies
@@ -180,7 +207,10 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
   (`warp`), time dilation (`timewarp`), shield (passive, auto-blocks). Helpers compute
   "before" state from the passed-in `game` snapshot — chained calls on a stale `game` can
   clobber each other (that's why anomaly.js writes targeted paths, not the whole teams array).
-- **Anomalies** (`anomaly.js`) on every 5th cell: supernova, wormhole, black hole, comms.
+- **Anomalies** (`anomaly.js`) on every **Nth** cell (`settings.anomalyEvery`, host-set at
+  setup, default 5): supernova, wormhole, black hole, comms. `isAnomalyCell(cell, boardLength, every)`
+  is the single source of truth — used by scoring.js and projector.js (so the marker and the
+  trigger always agree). Number labels also mark anomaly cells regardless of N.
   Host-side `Math.random`, host-only DOM modals. Comms only sets `commDisruptionActive`;
   the actual behavior is enforced where that flag is read.
 - **Security:** no auth. Firebase config (incl. apiKey) is committed; README tells operators
@@ -188,6 +218,14 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
   There's a hidden admin gesture on the landing page (click `#admin-station`, type the
   password in `landing.js`) that calls `deleteAllGames()`.
 - **Name uniqueness** is enforced only at join time, case-insensitive/trimmed.
+- **Event log (`boostLog` / "Eseménynapló")** is the full play-by-play, written from many
+  places: turn start (turn-manager `startNextTurn` + first turn in lobby), outcome + per-team
+  movement (scoring solved/stolen/shared/unsolved, hyperdrive penalty, mission-complete),
+  boost gain/use + effect (boosts.js), and anomaly + effect (anomaly.js). It is shown on the
+  **projector**, so messages **never contain the secret word** — only task type, points, and
+  score movements (`prev→new`). Append via `appendBoostLog()` in firebase-config (re-reads the
+  latest log before writing, so the host's many sequential per-turn writes don't clobber each
+  other); `addBoostLog(gameCode, game, msg)` is a thin wrapper (its `game` arg is now unused).
 
 ---
 
@@ -211,3 +249,10 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
 - **Pruned `css/style.css`** from ~2020 → ~560 lines.
 - Fixed the **"white/grey dashboard"** bug by removing `backdrop-filter` and giving
   `#bg-stars` a solid dark base (see §4).
+- **Board redesign + animations (2026-06)**: projector board now uses the `img/` art
+  (spaceships/planets/station/mine) and **animates** movement (ships fly along the path),
+  boost usage, boost gains, and anomalies. Implemented via a persistent `_stage` + per-event
+  FX (`boostLog[].fx`, score-diff, `anomalyEvent.type`). See §7 "Projector board engine".
+- **Richer event log**: every turn start, outcome + per-team movement, boost gain/use+effect,
+  and anomaly+effect are logged (word-free, since the projector shows it). `appendBoostLog`
+  re-reads before append to avoid clobbering; `addBoostLog` takes an optional `fx` 4th arg.

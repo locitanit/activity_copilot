@@ -1,7 +1,7 @@
 /**
  * logic/anomaly.js – Űranomália rendszer
  * ══════════════════════════════════════════
- * Minden 5. mező (5, 10, 15, …) anomália-mező.
+ * Minden N. mező anomália-mező (N = settings.anomalyEvery, alapért. 5).
  * Ha egy csapat ide lép a pontszerzés után, véletlenszerű esemény indul.
  *
  * Események (egyforma valószínűség):
@@ -11,7 +11,7 @@
  *   📡 Kommunikációs zavar  – a következő körben azonnal Nyílt Frekvencia (30 mp)
  */
 
-import { updateGameData } from '../firebase-config.js';
+import { updateGameData, appendBoostLog } from '../firebase-config.js';
 
 const TEAM_COLORS = ['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899'];
 
@@ -52,9 +52,15 @@ export const ANOMALY_EVENTS = {
 
 // ── Segédfüggvények ────────────────────────────────────────────
 
-/** Igaz, ha cellNum anomália-mező (minden 5., a START és END kivételével). */
-export function isAnomalyCell(cellNum, boardLength) {
-  return cellNum > 0 && cellNum < boardLength && cellNum % 5 === 0;
+/**
+ * Igaz, ha cellNum anomália-mező (minden N., a START és END kivételével).
+ * @param {number} cellNum
+ * @param {number} boardLength
+ * @param {number} [every=5] – anomália-sűrűség (settings.anomalyEvery); érvénytelen érték → 5
+ */
+export function isAnomalyCell(cellNum, boardLength, every = 5) {
+  const n = (Number.isInteger(every) && every >= 1) ? every : 5;
+  return cellNum > 0 && cellNum < boardLength && cellNum % n === 0;
 }
 
 /**
@@ -218,6 +224,12 @@ export async function triggerAnomalyEvent(gameCode, game, landingTeamIndex) {
       timestamp:            Date.now(),
     };
     await updateGameData(gameCode, updates);
+    try {
+      await appendBoostLog(gameCode, {
+        message: `${event.emoji} ${event.name} anomália (${teamName} lépett rá): ${specificDescription}`,
+        timestamp: Date.now(),
+      });
+    } catch (_) { /* silent */ }
     return { event, updatedTeams: teams, commDisruptionActive };
   }
 
@@ -297,6 +309,12 @@ export async function triggerAnomalyEvent(gameCode, game, landingTeamIndex) {
     timestamp:            Date.now(),
   };
   await updateGameData(gameCode, updates);
+  try {
+    await appendBoostLog(gameCode, {
+      message: `${event.emoji} ${event.name} anomália (${teamName} lépett rá): ${specificDescription}`,
+      timestamp: Date.now(),
+    });
+  } catch (_) { /* silent */ }
 
   return { event, updatedTeams: teams, commDisruptionActive };
 }

@@ -60,6 +60,7 @@ export async function createGame(settings) {
   const teamCount  = Math.max(2, parseInt(settings.teamCount, 10) || 2);
   const teamNames  = (settings.teamNames || []).slice(0, teamCount);
   const boardLen   = Math.max(5,  parseInt(settings.boardLength, 10) || 30);
+  const anomalyEvery = Math.max(2, parseInt(settings.anomalyEvery, 10) || 5); // anomália minden N. mezőn
 
   const gameData = {
     status: 'lobby',
@@ -69,6 +70,7 @@ export async function createGame(settings) {
       assignmentType:   settings.assignmentType   || 'random',
       teamNames,
       boardLength:      boardLen,
+      anomalyEvery,
       selectedTopics:   settings.selectedTopics   || [],
       allowedTaskTypes: settings.allowedTaskTypes || [],
     },
@@ -151,6 +153,25 @@ export async function updateGameData(code, updates) {
 export async function getGame(code) {
   const snap = await get(ref(db, `games/${code}`));
   return snap.val();
+}
+
+/**
+ * Hozzáfűz egy bejegyzést az eseménynaplóhoz (boostLog).
+ * A legfrissebb naplót olvassa be írás előtt, így a host által egy körön belül
+ * sorosan kiadott több naplóírás nem írja felül egymást (stale-snapshot probléma).
+ * @param {string} code   Játékkód
+ * @param {Object} entry  Naplóbejegyzés ({ message, timestamp, ... })
+ * @param {number} [cap=500]  Megőrzött bejegyzések maximuma
+ */
+export async function appendBoostLog(code, entry, cap = 500) {
+  const snap = await get(ref(db, `games/${code}/boostLog`));
+  const raw  = snap.val();
+  const log  = Array.isArray(raw)
+    ? [...raw]
+    : (raw && typeof raw === 'object' ? Object.values(raw) : []);
+  log.push(entry);
+  if (log.length > cap) log.splice(0, log.length - cap);
+  await update(ref(db), { [`games/${code}/boostLog`]: log });
 }
 
 /** Törli az összes játékot az adatbázisból. */

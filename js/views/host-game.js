@@ -6,7 +6,7 @@
 
 import { showToast, leaveBarHtml, wireLeaveBar }         from '../app.js';
 import { updateGameData }                                from '../firebase-config.js';
-import { rerollCurrentWord }                             from '../logic/turn-manager.js';
+import { rerollCurrentWord, switchToNextPlayer }         from '../logic/turn-manager.js';
 import { awardPoints, awardSharedPoints, endTurnNoScore } from '../logic/scoring.js';
 import { getElapsedMs, getPhaseInfo, getTotalSeconds, formatTime } from '../logic/timer.js';
 import { BOOST_TYPES }                                   from '../logic/boosts.js';
@@ -172,6 +172,8 @@ export function renderHostGame(game, appState) {
 
   const activeTeam      = teams[currentTurn.teamIndex] || {};
   const activeColor     = TEAM_COLORS[currentTurn.teamIndex] || '#888';
+  const activeTeamPlayerCount = Object.values(game.players || {})
+    .filter(p => p.teamIndex === currentTurn.teamIndex).length;
   const boardLen        = game.settings?.boardLength || 30;
   const totalSeconds    = getTotalSeconds(timeDilationActive, commDisruptionActive) || 1;
   const timerColor      = PHASE_HEX[phaseInfo.colorClass] || '#feb528';
@@ -220,8 +222,8 @@ export function renderHostGame(game, appState) {
       <section class="flex-1 flex flex-col gap-gutter min-w-0">
 
         <!-- Secret word card -->
-        <div class="holographic-panel rounded p-6 flex flex-col gap-4 relative" style="border-left:4px solid ${activeColor}">
-          <div class="absolute top-0 right-0 p-2 opacity-20 pointer-events-none">
+        <div class="holographic-panel rounded p-6 flex flex-col gap-4 relative" style="border-left:4px solid ${activeColor};isolation:isolate">
+          <div class="absolute top-0 right-0 p-2 opacity-20 pointer-events-none" style="z-index:-1">
             <span class="material-symbols-outlined text-4xl">vpn_key</span>
           </div>
           ${currentTurn.word ? `
@@ -241,7 +243,13 @@ export function renderHostGame(game, appState) {
                   <button id="btn-reveal-word"
                     class="bg-primary-container text-on-primary-container font-label-md text-label-md uppercase px-6 py-3 rounded clip-chamfer neon-glow-primary transition-all flex items-center gap-2">
                     <span class="material-symbols-outlined">visibility</span> Szó felfedése
-                  </button>` : `
+                  </button>
+                  ${activeTeamPlayerCount > 1 ? `
+                  <button id="btn-next-player"
+                    class="border border-primary-container text-primary-container font-label-md text-label-md uppercase px-6 py-3 rounded clip-chamfer hover:bg-primary-container/10 transition-all flex items-center gap-2"
+                    title="A kör átadása a flotta másik tagjának (felfedés előtt)">
+                    <span class="material-symbols-outlined">group</span> Másik asztronauta
+                  </button>` : ''}` : `
                   <span class="font-label-md text-label-md text-success flex items-center gap-2" style="color:#00e676">
                     <span class="material-symbols-outlined">visibility</span> Felfedve
                   </span>`}
@@ -258,7 +266,7 @@ export function renderHostGame(game, appState) {
           <!-- Timer card -->
           <div class="holographic-panel rounded p-6 flex-1 flex flex-col items-center justify-center gap-6">
             <div class="relative w-44 h-44 flex items-center justify-center">
-              <svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+              <svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100" style="overflow:visible">
                 <circle cx="50" cy="50" r="45" fill="none" stroke="#2f3639" stroke-width="3"></circle>
                 <circle id="hg-ring" cx="50" cy="50" r="45" fill="none" stroke="${timerColor}" stroke-width="5"
                         stroke-linecap="round" stroke-dasharray="${RING_C}" stroke-dashoffset="${ringOffset}"
@@ -465,6 +473,18 @@ export function renderHostGame(game, appState) {
     } catch (err) {
       showToast('Hiba: ' + err.message);
       const b = document.getElementById('btn-reveal-word');
+      if (b) b.disabled = false;
+    }
+  });
+
+  document.getElementById('btn-next-player')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-next-player');
+    if (btn) btn.disabled = true;
+    try {
+      await switchToNextPlayer(appState.gameCode, game);
+    } catch (err) {
+      showToast('Hiba: ' + err.message);
+      const b = document.getElementById('btn-next-player');
       if (b) b.disabled = false;
     }
   });

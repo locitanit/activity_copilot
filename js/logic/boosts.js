@@ -4,7 +4,7 @@
  * Boost típusok, szerzés, aktiválás, csapda- és pajzslogika.
  */
 
-import { updateGameData } from '../firebase-config.js';
+import { updateGameData, appendBoostLog } from '../firebase-config.js';
 
 // ── Boost definíciók ──────────────────────────────────────────
 export const BOOST_TYPES = {
@@ -67,7 +67,7 @@ export async function addBoostToTeam(gameCode, game, teamIndex) {
     [`teams/${teamIndex}/inventory`]: inventory,
   });
 
-  await addBoostLog(gameCode, game, logMsg);
+  await addBoostLog(gameCode, game, logMsg, { kind: 'boost_gain', team: teamIndex });
 
   return boostId;
 }
@@ -148,7 +148,12 @@ export async function activateTorpedo(gameCode, game, firingTeamIndex, targetTea
   }
 
   await updateGameData(gameCode, updates);
-  await addBoostLog(gameCode, game, logMsg);
+  await addBoostLog(gameCode, game, logMsg, {
+    kind: 'torpedo',
+    team: firingTeamIndex,
+    target: targetTeamIndex,
+    outcome: shielded ? 'shielded' : (damage > 0 ? 'hit' : 'miss'),
+  });
 
   return { hit: damage > 0, damage, shielded };
 }
@@ -183,7 +188,7 @@ export async function activateTrap(gameCode, game, teamIndex, cellNumber, boostI
     [`teams/${teamIndex}/inventory`]: inventory,
     traps,
   });
-  await addBoostLog(gameCode, game, logMsg);
+  await addBoostLog(gameCode, game, logMsg, { kind: 'trap_place', team: teamIndex, cell: cellNumber });
 }
 
 // ── Hiperhajtómű aktiválás ───────────────────────────────────
@@ -207,7 +212,7 @@ export async function activateHyperdrive(gameCode, game, teamIndex, boostIndex) 
     [`teams/${teamIndex}/inventory`]: inventory,
     'currentTurn/hyperdriveActive': true,
   });
-  await addBoostLog(gameCode, game, logMsg);
+  await addBoostLog(gameCode, game, logMsg, { kind: 'warp', team: teamIndex });
 }
 
 // ── Időtágulás aktiválás ─────────────────────────────────────
@@ -228,7 +233,7 @@ export async function activateTimeDilation(gameCode, game, teamIndex, boostIndex
     [`teams/${teamIndex}/inventory`]: inventory,
     'currentTurn/timeDilationActive': true,
   });
-  await addBoostLog(gameCode, game, logMsg);
+  await addBoostLog(gameCode, game, logMsg, { kind: 'timewarp', team: teamIndex });
 }
 
 // ── Csapda ellenőrzés (score módosítás után hívandó) ─────────
@@ -260,7 +265,7 @@ export async function checkTraps(gameCode, game, teamIndex, newScore) {
     updates[`traps/${cellNum}`] = null;
     const logMsg = `🛡️ ${team.name} pajzsa kivédte a gravitációs csapdát a ${cellNum}. mezőn!`;
     await updateGameData(gameCode, updates);
-    await addBoostLog(gameCode, game, logMsg);
+    await addBoostLog(gameCode, game, logMsg, { kind: 'shield_block', team: teamIndex, cell: cellNum });
     return false;
   }
 
@@ -270,21 +275,22 @@ export async function checkTraps(gameCode, game, teamIndex, newScore) {
 
   const logMsg = `🕳️ ${team.name} gravitációs csapdába lépett a ${cellNum}. mezőn! Kimarad a következő köréből!`;
   await updateGameData(gameCode, updates);
-  await addBoostLog(gameCode, game, logMsg);
+  await addBoostLog(gameCode, game, logMsg, { kind: 'trap_trigger', team: teamIndex, cell: cellNum });
   return true;
 }
 
-// ── Boost napló ──────────────────────────────────────────────
+// ── Eseménynapló ─────────────────────────────────────────────
 /**
- * Hozzáad egy bejegyzést a boost naplóhoz (kivetítőhöz).
+ * Hozzáad egy bejegyzést az eseménynaplóhoz (kivetítőhöz).
+ * A `game` paramétert kompatibilitásból tartjuk meg – a legfrissebb naplót
+ * az appendBoostLog olvassa be írás előtt, hogy az egy körön belüli több
+ * naplóírás ne írja felül egymást.
+ *
+ * @param {Object} [fx] – Opcionális strukturált animációs metaadat a kivetítőnek:
+ *   { kind:'boost_gain'|'torpedo'|'trap_place'|'trap_trigger'|'shield_block'|'warp'|'timewarp',
+ *     team?:number, target?:number, cell?:number, outcome?:'hit'|'miss'|'shielded' }
+ *   A kivetítő ebből indítja a megfelelő FX-et (a magyar szöveg elemzése nélkül).
  */
-export async function addBoostLog(gameCode, game, message) {
-  const log = [...(Array.isArray(game.boostLog) ? game.boostLog : [])];
-  log.push({
-    message,
-    timestamp: Date.now(),
-  });
-  // Maximum 10 bejegyzés
-  if (log.length > 10) log.splice(0, log.length - 10);
-  await updateGameData(gameCode, { boostLog: log });
+export async function addBoostLog(gameCode, game, message, fx) {
+  await appendBoostLog(gameCode, { message, timestamp: Date.now(), ...(fx ? { fx } : {}) });
 }

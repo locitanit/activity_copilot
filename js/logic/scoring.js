@@ -14,7 +14,7 @@
 import { updateGameData } from '../firebase-config.js';
 import { startNextTurn }  from './turn-manager.js';
 import { getCurrentPhase } from './timer.js';
-import { addBoostToTeam, checkTraps } from './boosts.js';
+import { addBoostToTeam, checkTraps, addBoostLog } from './boosts.js';
 import { isAnomalyCell, triggerAnomalyEvent } from './anomaly.js';
 
 // ── Belső segéd ────────────────────────────────────────────────
@@ -45,6 +45,7 @@ export async function awardSharedPoints(gameCode, game, winnerTeamIndexes) {
   if (!currentTurn) return;
 
   const teams   = (game.teams || []).map(t => ({ ...t }));
+  const prevScores = teams.map(t => t.score || 0);   // pont előtti pozíciók (naplóhoz)
   const players = game.players || {};
   let pts       = currentTurn.points || 0;
   const normalizedWinnerIndexes = [...new Set(
@@ -105,6 +106,38 @@ export async function awardSharedPoints(gameCode, game, winnerTeamIndexes) {
 
   await updateGameData(gameCode, updates);
 
+  // ── Eredmény + mozgás naplózása (titkos szó NÉLKÜL) ───────
+  try {
+    const taskLabel = currentTurn.taskType ? ` (${currentTurn.taskType})` : '';
+    const move = idx => `${prevScores[idx]}→${teams[idx].score}`;
+    const delta = idx => teams[idx].score - prevScores[idx];
+    if (result === 'solved') {
+      const idx = normalizedWinnerIndexes[0];
+      const dbl = hyperdriveActive ? ' ⚡dupla' : '';
+      await addBoostLog(gameCode, game,
+        `✅ ${teams[idx].name} megfejtette az adatcsomagot${taskLabel} → +${delta(idx)}${dbl} fényév (${move(idx)})`);
+    } else if (result === 'stolen') {
+      const idx = normalizedWinnerIndexes[0];
+      const robbedName = teams[currentTurn.teamIndex]?.name ?? 'a másik flotta';
+      await addBoostLog(gameCode, game,
+        `🛰️ ${teams[idx].name} ELLOPTA a megfejtést ${robbedName} elől${taskLabel} → +${delta(idx)} fényév (${move(idx)})`);
+    } else {
+      const parts = normalizedWinnerIndexes
+        .map(idx => `${teams[idx].name} +${delta(idx)} (${move(idx)})`)
+        .join(', ');
+      await addBoostLog(gameCode, game,
+        `🤝 Megosztott siker${taskLabel}: ${parts}`);
+    }
+  } catch (_) { /* silent */ }
+
+  if (hasWinner) {
+    try {
+      const finisher = teams.find(t => (t.score || 0) >= boardLength);
+      await addBoostLog(gameCode, game,
+        `🏁 ${finisher?.name ?? 'A győztes flotta'} elérte a Proxima bázist – küldetés teljesítve!`);
+    } catch (_) { /* silent */ }
+  }
+
   // ── Boost szerzés: csak Fázis 1-ben ───────────────────────
   const timeDilation = !!currentTurn.timeDilationActive;
   const phase = getCurrentPhase(
@@ -138,8 +171,9 @@ export async function awardSharedPoints(gameCode, game, winnerTeamIndexes) {
     // Rögzítjük, melyik csapatok léptek anomáliára a feladványból szerzett pont alapján
     // (az anomáliák hatása előtt). Előrébb lévők kerülnek előre a sorban.
     // Ha anomália hatására kerül valaki anomáliamezőre, az nem érvényesül.
+    const anomalyEvery = game.settings?.anomalyEvery || 5;
     const anomalyCandidates = normalizedWinnerIndexes
-      .filter(idx => isAnomalyCell(teams[idx].score, boardLength))
+      .filter(idx => isAnomalyCell(teams[idx].score, boardLength, anomalyEvery))
       .sort((a, b) => teams[b].score - teams[a].score);
     let postAnomalyTeams        = teams;
     let commDisruptionTriggered = false;
@@ -159,6 +193,11 @@ export async function awardSharedPoints(gameCode, game, winnerTeamIndexes) {
     const anomalyHasWinner = postAnomalyTeams.some(t => t.score >= boardLength);
     if (anomalyHasWinner) {
       await updateGameData(gameCode, { status: 'finished', teams: postAnomalyTeams });
+      try {
+        const finisher = postAnomalyTeams.find(t => (t.score || 0) >= boardLength);
+        await addBoostLog(gameCode, game,
+          `🏁 ${finisher?.name ?? 'A győztes flotta'} egy anomália révén elérte a Proxima bázist – küldetés teljesítve!`);
+      } catch (_) { /* silent */ }
       return;
     }
 
@@ -187,10 +226,11 @@ export async function endTurnNoScore(gameCode, game) {
 
   // ── Hiperhajtómű büntetés: -1 fényév ──────────────────────
   const hyperdriveActive = !!currentTurn.hyperdriveActive;
+  const penaltyTeamIdx   = currentTurn.teamIndex;
+  const prevPenaltyScore = teams[penaltyTeamIdx]?.score || 0;
   if (hyperdriveActive) {
-    const teamIdx = currentTurn.teamIndex;
-    if (teamIdx >= 0 && teamIdx < teams.length) {
-      teams[teamIdx].score = Math.max(0, (teams[teamIdx].score || 0) - 1);
+    if (penaltyTeamIdx >= 0 && penaltyTeamIdx < teams.length) {
+      teams[penaltyTeamIdx].score = Math.max(0, (teams[penaltyTeamIdx].score || 0) - 1);
     }
   }
 
@@ -223,6 +263,18 @@ export async function endTurnNoScore(gameCode, game) {
   }
 
   await updateGameData(gameCode, updates);
+
+  // ── Sikertelen kör naplózása (titkos szó NÉLKÜL) ──────────
+  try {
+    const teamName  = game.teams?.[currentTurn.teamIndex]?.name ?? 'Csapat';
+    const taskLabel = currentTurn.taskType ? ` (${currentTurn.taskType})` : '';
+    await addBoostLog(gameCode, game,
+      `❌ ${teamName} nem fejtette meg az adatcsomagot${taskLabel} – senki sem szerzett pontot`);
+    if (hyperdriveActive) {
+      await addBoostLog(gameCode, game,
+        `⚡ Hiperhajtómű kudarc: ${teamName} −1 fényév (${prevPenaltyScore}→${teams[penaltyTeamIdx]?.score})`);
+    }
+  } catch (_) { /* silent */ }
 
   await startNextTurn(gameCode, {
     ...game,

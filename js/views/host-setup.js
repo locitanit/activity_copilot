@@ -81,6 +81,19 @@ export function renderHostSetup() {
                   class="font-display-md text-display-md text-primary-fixed-dim min-w-[3ch] text-right">30</span>
           </div>
         </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="${_labelCls}">Anomáliák sűrűsége</span>
+          <div class="flex items-center gap-4">
+            <input id="anomaly-every" type="range" min="2" max="15" value="5"
+                   class="flex-1 accent-primary-container">
+            <span id="anomaly-every-val"
+                  class="font-display-md text-display-md text-primary-fixed-dim min-w-[3ch] text-right">5</span>
+          </div>
+          <span class="font-code-sm text-code-sm text-on-surface-variant">
+            Minden <span id="anomaly-every-inline">5</span>. mező űranomália (szupernóva, féreglyuk, fekete lyuk, kommunikációs zavar).
+          </span>
+        </div>
       </div>
 
       <!-- Adatbázisok -->
@@ -141,6 +154,14 @@ export function renderHostSetup() {
   const rangeVal   = document.getElementById('board-length-val');
   rangeInput.addEventListener('input', () => { rangeVal.textContent = rangeInput.value; });
 
+  const anomInput  = document.getElementById('anomaly-every');
+  const anomVal    = document.getElementById('anomaly-every-val');
+  const anomInline = document.getElementById('anomaly-every-inline');
+  anomInput.addEventListener('input', () => {
+    anomVal.textContent = anomInput.value;
+    if (anomInline) anomInline.textContent = anomInput.value;
+  });
+
   document.getElementById('btn-setup-back').addEventListener('click', () => {
     import('./landing.js').then(({ renderLanding }) => {
       showView('view-landing');
@@ -178,6 +199,7 @@ function _renderTeamNameInputs(count) {
 async function _handleCreateLobby() {
   const teamCount = parseInt(document.getElementById('team-count').value, 10);
   const boardLength = parseInt(document.getElementById('board-length').value, 10);
+  const anomalyEvery = parseInt(document.getElementById('anomaly-every').value, 10);
   const assignmentType = document.querySelector('input[name="assignmentType"]:checked')?.value || 'random';
 
   const teamNames = Array.from(document.querySelectorAll('.team-name-field'))
@@ -216,6 +238,7 @@ async function _handleCreateLobby() {
       teamCount,
       teamNames,
       boardLength,
+      anomalyEvery,
       assignmentType,
       allowedTaskTypes,
       selectedTopics,

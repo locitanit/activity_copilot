@@ -165,6 +165,75 @@ export async function startNextTurn(gameCode, game) {
     anomalyPending:       null,
     anomalyEvent:         null,
   });
+
+  // ── Kör kezdete naplózása (titkos szó NÉLKÜL) ─────────────
+  try {
+    const startedTeamName = teams[nextTeamIndex]?.name ?? 'Csapat';
+    const playerName = activePlayerId && players[activePlayerId]
+      ? players[activePlayerId].name : '';
+    const who = playerName ? ` · ${playerName} asztronauta` : '';
+    const comms = newCurrentTurn.commDisruptionActive ? ' · 📡 Nyílt frekvencia' : '';
+    await addBoostLog(gameCode, game,
+      `🛰️ ${startedTeamName} köre${who} · ${newCurrentTurn.taskType} (${newCurrentTurn.points} fényév a tét)${comms}`);
+  } catch (_) { /* silent */ }
+}
+
+// ── Aktív játékos váltása (másik asztronauta a flottából) ──────
+/**
+ * Átadja az aktuális kört az aktív flotta egy másik tagjának – akkor hasznos,
+ * ha a kiválasztott asztronauta nem akar játszani. Csak a szó felfedése előtt
+ * hívható. A kihagyott játékos turnCount-ja nő, így a sor végére kerül (nem őt
+ * választja újra a következő kör), az új aktív játékos pedig a legrégebben
+ * szerepelt csapattárs lesz.
+ *
+ * @param {string} gameCode
+ * @param {Object} game
+ * @returns {Promise<string>} az új aktív játékos id-je
+ */
+export async function switchToNextPlayer(gameCode, game) {
+  const currentTurn = game.currentTurn;
+  if (!currentTurn) throw new Error('Nincs aktív kör.');
+  if (currentTurn.wordRevealed) {
+    throw new Error('A szó már fel van fedve – nem váltható az asztronauta.');
+  }
+  if (currentTurn.timerStartedAt) {
+    throw new Error('Az adatátvitel már elindult – nem váltható az asztronauta.');
+  }
+
+  const players   = game.players || {};
+  const teamIndex = currentTurn.teamIndex;
+  const currentId = currentTurn.activePlayerId || null;
+
+  // A flotta többi tagja, a legrégebben szerepelttel az élen (turnCount, majd id)
+  const others = Object.entries(players)
+    .filter(([id, p]) => p.teamIndex === teamIndex && id !== currentId)
+    .sort((a, b) =>
+      (a[1].turnCount || 0) - (b[1].turnCount || 0) || (a[0] < b[0] ? -1 : 1));
+
+  if (others.length === 0) {
+    throw new Error('Nincs másik asztronauta ebben a flottában.');
+  }
+
+  const nextId  = others[0][0];
+  const updates = { 'currentTurn/activePlayerId': nextId };
+
+  // A kihagyott játékos a sor végére kerül
+  if (currentId && players[currentId]) {
+    updates[`players/${currentId}/turnCount`] = (players[currentId].turnCount || 0) + 1;
+  }
+
+  await updateGameData(gameCode, updates);
+
+  // Napló (titkos szó NÉLKÜL)
+  try {
+    const teamName = game.teams?.[teamIndex]?.name ?? 'Csapat';
+    const oldName  = currentId && players[currentId] ? players[currentId].name : '';
+    const newName  = players[nextId]?.name ?? '';
+    const suffix   = oldName ? ` (${oldName} helyett)` : '';
+    await addBoostLog(gameCode, game, `🔄 ${teamName}: ${newName} veszi át az adást${suffix}`);
+  } catch (_) { /* silent */ }
+
+  return nextId;
 }
 
 // ── Aktuális szó/feladat újrasorsolása ─────────────────────────

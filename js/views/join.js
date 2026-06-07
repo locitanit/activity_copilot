@@ -11,9 +11,9 @@ export function renderJoin() {
 
   el.innerHTML = `
     <div class="min-h-screen w-full flex flex-col items-center justify-center px-margin-mobile py-12">
-      <div class="holographic-panel rounded-xl p-8 w-full max-w-md flex flex-col gap-6 relative">
+      <div class="holographic-panel rounded-xl p-8 w-full max-w-md flex flex-col gap-6 relative" style="isolation:isolate">
 
-        <div class="absolute top-0 right-0 p-3 opacity-20 pointer-events-none">
+        <div class="absolute top-0 right-0 p-3 opacity-20 pointer-events-none" style="z-index:-1">
           <span class="material-symbols-outlined text-5xl">login</span>
         </div>
 

@@ -6,7 +6,7 @@
  */
 
 import { showToast, leaveBarHtml, wireLeaveBar } from '../app.js';
-import { updateGameData }              from '../firebase-config.js';
+import { updateGameData, appendBoostLog } from '../firebase-config.js';
 import { generateTurnData, selectNextPlayer } from '../logic/turn-manager.js';
 
 const TEAM_COLORS_HEX = ['#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#ec4899'];
@@ -198,8 +198,21 @@ async function _handleStartGame(game, playerEntries, appState) {
   updates['currentTurn']  = currentTurn;
   updates['upcomingTurns'] = upcomingTurns;
   updates['turnHistory']  = [];
+  updates['boostLog']      = [];
 
   await updateGameData(appState.gameCode, updates);
+
+  // ── Küldetés indulása + első kör naplózása (titkos szó NÉLKÜL) ──
+  try {
+    const firstTeamName = teams[0]?.name ?? 'Csapat';
+    const firstPlayerName = firstActivePlayerId && effectivePlayers[firstActivePlayerId]
+      ? effectivePlayers[firstActivePlayerId].name : '';
+    const who = firstPlayerName ? ` · ${firstPlayerName} asztronauta` : '';
+    await appendBoostLog(appState.gameCode,
+      { message: '🚀 Küldetés indul – jó utat a Proxima bázisig!', timestamp: Date.now() });
+    await appendBoostLog(appState.gameCode,
+      { message: `🛰️ ${firstTeamName} köre${who} · ${firstTurn.taskType} (${firstTurn.points} fényév a tét)`, timestamp: Date.now() });
+  } catch (_) { /* silent */ }
 }
 
 // ── Játékos nézet ──────────────────────────────────────────────

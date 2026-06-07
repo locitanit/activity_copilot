@@ -44,7 +44,7 @@ Csapatban kell szavakat/fogalmakat kitaláltatni a többiekkel. Az a csapat nyer
 - **Osztott pont**: Egyszerre több csapatnak is adható pont – `🤝 Osztott pontozás könyvelése`.
 - **Újra húzás**: A Játékmester az idő elindítása előtt újrahúzhatja a szót (`🔀 Feladvány újrasorsolása`).
 - **Fejlesztések (boostok)**: torpedó, gravitációs csapda, hiperhajtómű, időtágulás, pajzs.
-- **Űranomáliák**: minden 5. mezőn (szupernóva, féreglyuk, fekete lyuk, kommunikációs zavar).
+- **Űranomáliák**: minden N. mezőn (a sűrűség a beállításoknál állítható, alapért. 5) – szupernóva, féreglyuk, fekete lyuk, kommunikációs zavar.
 
 ### Csatlakozás és kilépés
 - **Csatlakozás**: a főmenü **„Csatlakozás kóddal"** gombja külön oldalra visz (kód + név).
