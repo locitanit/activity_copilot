@@ -84,7 +84,9 @@ The whole UI was rebuilt to a **holographic HUD** look. Two style sources coexis
   drives all the redesigned view markup.
 - **`css/style.css`** (~560 lines, pruned) keeps ONLY: `:root` theme vars, reset,
   splash, toast, the `.view` system, the **briefing hologram** (`.briefing-*`),
-  the **boost chips** (`.boost-chip*`), the host **projector dropdown** (`.proj-menu*`),
+  the **boost chips** (`.boost-chip*`, host arsenal) + **`.boost-info`** (player arsenal
+  description tooltip — shows on hover/`:focus`/`.tip-open`; tap toggles on phones, set in
+  player-game.js), the host **projector dropdown** (`.proj-menu*`),
   the **anomaly modal** (`.anomaly-modal*`, used by host modals + projector overlay),
   and a few keyframes (`bh-pulse`, `orbit-wobble`, `fade-pulse`). Everything else (old
   per-view CSS) was deleted.
@@ -158,7 +160,7 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
 | Lobby | `lobby.js` | host / player | `#btn-start-game`, `.team-join-btn[data-team]`, `#btn-leave-game` |
 | Host game | `host-game.js` | briefing / playing | `#btn-launch-game`, `#btn-reveal-word`, `#btn-next-player` (switch active astronaut, pre-reveal), `#btn-reroll`, `#hg-timer`/`#hg-label`/`#hg-ring`, `#btn-start-timer`/`#btn-pause-timer`/`#btn-reset-timer`, `.score-btn[data-team]`, `#btn-no-score`, `.shared-score-check`/`#btn-award-shared`, `#host-details-toggle`/`#host-details-section`, `.proj-menu*`, `.boost-chip*`, `#btn-leave-game` |
 | Projector | `projector.js` | lobby/briefing/playing/finished | `#proj-board-area` (empty mount — see §7 board engine), `#proj-timer`/`#proj-label`/`#proj-timer-panel`, `.stellar-node`/`.constellation-line`, `.proj-ship`/`.proj-ship-craft`/`.proj-planet`/`.proj-station`/`.proj-mine`, `.proj-fx*` |
-| Player game | `player-game.js` | briefing / playing | `#pg-timer`/`#pg-label`/`#pg-ring`, `#pg-details-toggle`/`#pg-details-section`, `.boost-activate-row`, `.torpedo-target-sel`/`.torpedo-fire-btn`, `.trap-cell-input`/`.trap-place-btn`, `.warp-btn`, `.timewarp-btn` (all `[data-bidx]`), `#btn-leave-game` |
+| Player game | `player-game.js` | briefing / playing | `#pg-timer`/`#pg-label`/`#pg-ring`, `#pg-details-toggle`/`#pg-details-section`, `.boost-activate-row`, `.boost-info` (boost tooltip), `.torpedo-target-sel`/`.torpedo-fire-btn`, `.trap-cell-input`/`.trap-place-btn`, `.warp-btn`, `.timewarp-btn` (all `[data-bidx]`), `#btn-leave-game` |
 | Winner | `winner.js` | — | `#btn-new-game-winner` |
 
 **Collapsible panels** (host & player details) toggle inline `style.display`, NOT the
@@ -201,6 +203,10 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
   - **Ships have no ID pip** (color + glow only). **Animations are deliberately slow** (~330ms/cell,
     FX ~1.2–2.5s). The projector **anomaly popup is deferred** (`_syncAnomalyModal`, shown only when
     `!_anyShipAnimating()`) so the landing movement plays fully BEFORE the modal appears.
+  - **Ship facing**: moving ships rotate to the travel heading (with a `scaleY(-1)` flip so they're
+    never upside-down). A *resting* ship faces its serpentine row's travel direction — `_restHeading(cell)`
+    returns 0 (right) or 180 (left, mirrored) from the sign of the node x-deltas — so a ship that moved
+    left along a row keeps facing left when it stops.
   - **Special FX choreography**: supernova blast is placed *behind* each pushed ship (`_behindCellXY`,
     using `anomalyEvent.affected[].from`) so the wave shoves it forward; **wormhole = teleport**
     (`_fxWormholeTeleport`: ship shrinks at the entry cell, a wormhole sprite shows on entry AND exit,
@@ -265,3 +271,12 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
 - **Richer event log**: every turn start, outcome + per-team movement, boost gain/use+effect,
   and anomaly+effect are logged (word-free, since the projector shows it). `appendBoostLog`
   re-reads before append to avoid clobbering; `addBoostLog` takes an optional `fx` 4th arg.
+- **Configurable anomaly density** (`settings.anomalyEvery`, host-set slider, default 5);
+  `isAnomalyCell(cell, boardLength, every)` is the single source of truth (scoring + projector).
+- **Host control** `#btn-next-player` (hand the pre-reveal turn to another teammate).
+- **Board/animation polish**: slower timings; anomaly popup deferred until the landing move
+  finishes; node art (Earth only at START, sparse planets, moons/nebulae); ships mirror to
+  face their serpentine row's direction at rest (`_restHeading`); supernova blast behind the
+  pushed ship; wormhole = shrink/teleport/grow; torpedo recoil waits for the explosion
+  (atomic score+log write); dashboard task type shows its `fényév`; landing station hidden on phones.
+- **Player boost tooltips**: `.boost-info` shows each boost's description on hover (PC) / tap (phone).

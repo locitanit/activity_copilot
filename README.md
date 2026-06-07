@@ -43,8 +43,20 @@ Csapatban kell szavakat/fogalmakat kitaláltatni a többiekkel. Az a csapat nyer
 - **Lopott pont**: Más csapat is szerezhet pontot, ha a saját csapat helyett ők találják ki.
 - **Osztott pont**: Egyszerre több csapatnak is adható pont – `🤝 Osztott pontozás könyvelése`.
 - **Újra húzás**: A Játékmester az idő elindítása előtt újrahúzhatja a szót (`🔀 Feladvány újrasorsolása`).
+- **Másik asztronauta**: felfedés előtt a Játékmester átadhatja a kört a flotta egy másik
+  tagjának (ha valaki épp nem szeretne sorra kerülni).
 - **Fejlesztések (boostok)**: torpedó, gravitációs csapda, hiperhajtómű, időtágulás, pajzs.
+  A boostok rövid leírása a vezérlőpulton és a játékos telefonján is megjelenik (egérrávitel
+  vagy koppintás).
 - **Űranomáliák**: minden N. mezőn (a sűrűség a beállításoknál állítható, alapért. 5) – szupernóva, féreglyuk, fekete lyuk, kommunikációs zavar.
+
+### Animált kivetítő-tábla
+A kivetítő egy élő **csillagtérkép**: a flották **színes űrhajóként** repülnek a bolygók
+(START = Föld, CÉL = űrállomás) között, mező-mezőre, a haladási irányba fordulva. Minden
+fontos esemény saját **animációt** kap – mozgás, fejlesztés-szerzés és -használat (torpedó +
+robbanás, csapda, pajzs, hiperhajtómű, időtágulás), valamint az anomáliák (szupernóva-lökés,
+féreglyuk-teleport, fekete lyuk). A jobb oldali **Eseménynapló** az egész játékmenetet
+rögzíti (ki van soron, sikerült-e, minden mozgás és hatás), így a meccs visszakövethető.
 
 ### Csatlakozás és kilépés
 - **Csatlakozás**: a főmenü **„Csatlakozás kóddal"** gombja külön oldalra visz (kód + név).
@@ -87,7 +99,7 @@ Csapatban kell szavakat/fogalmakat kitaláltatni a többiekkel. Az a csapat nyer
    - Nyisd meg az `index.html`-t HTTP szerveren (pl. Live Server → `Go Live`)
    - **Játékmester**: "Új küldetés" → beállítások → lobby kód megosztása
    - **Játékosok**: megnyitják ugyanazt az URL-t, „Csatlakozás kóddal" → kód és név
-   - **Kivetítő**: a Host vezérlőpult **„🌌 Kivetítő"** gombja új ablakban nyitja meg (csillagtérkép-tábla, pontszámok, időzítő – a titkos szót **soha** nem mutatja)
+   - **Kivetítő**: a Host vezérlőpult **„🌌 Kivetítő"** gombja új ablakban nyitja meg (animált csillagtérkép-tábla űrhajókkal/bolygókkal, pontszámok, időzítő, eseménynapló – a titkos szót **soha** nem mutatja)
 
 ### GitHub Pages (opcionális)
 A projekt statikus, közvetlenül hosztolható GitHub Pages-en:
@@ -104,7 +116,7 @@ https://<felhasználónév>.github.io/<repo-neve>/
 | **HTML5** | Single-page alkalmazás – egyetlen `index.html`, 8 nézet-konténerrel |
 | **Tailwind CSS (Play CDN)** | A nézetek dizájnja; Material-Design-3 színpaletta (inline `tailwind.config`) |
 | **Material Symbols + Exo 2** | Ikonok és megjelenítő betűtípus (Google Fonts) |
-| **CSS3 (`css/style.css`)** | Amit a Tailwind nem fed le: téma-változók, splash, toast, briefing hologram, anomália-ablak, boost-chipek |
+| **CSS3 (`css/style.css` + `index.html`)** | Amit a Tailwind nem fed le: téma-változók, splash, toast, briefing hologram, anomália-ablak, boost-chipek és -leírás buborékok; a csillagtérkép-tábla, az űrhajók és az animációs FX stílusai az `index.html` `<style>` blokkjában |
 | **WebGL** | Globális, animált csillagmező háttér (`index.html`) |
 | **Vanilla JavaScript (ES6 modules)** | Teljes frontend logika, nézetek, állapotkezelés – keretrendszer nélkül |
 | **Firebase Realtime Database (SDK 10.12.2)** | Valós idejű adatszinkronizáció (CDN-ről, `import`-tal) |
@@ -136,7 +148,7 @@ activity/
     └── views/
         ├── landing.js          # Főmenü
         ├── join.js             # Csatlakozás kóddal (dedikált oldal)
-        ├── host-setup.js       # Játékbeállítások (flották, témák, tábla hossza)
+        ├── host-setup.js       # Játékbeállítások (flották, témák, tábla hossza, anomália-sűrűség)
         ├── lobby.js            # Váróterem (kód, csapatbeosztás) – Host + Játékos
         ├── host-game.js        # Host vezérlőpult (titkos szó, időzítő, pontozás)
         ├── projector.js        # Kivetítő (publikus csillagtérkép, szó nélkül)

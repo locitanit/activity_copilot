@@ -716,12 +716,24 @@ function _setShipTransform(i, x, y, heading, thrust) {
     else craft.classList.remove('proj-ship--thrusting');
   }
 }
+// Álló hajó iránya: a szerpentin sor haladási iránya az adott mezőn.
+// Ha a sor balra halad (a következő/előző mező balra van), a hajó balra néz
+// (tükrözve), különben jobbra. Az x-eltolások előjeléből számoljuk (jitter-tűrő).
+function _restHeading(cell) {
+  if (!_layout) return 0;
+  const N = _layout.N, cx = _layout.cx;
+  const c = Math.min(Math.max(cell | 0, 0), N - 1);
+  let dx = 0;
+  if (c < N - 1) dx += cx[c + 1] - cx[c];   // kifelé mutató szakasz
+  if (c > 0)     dx += cx[c] - cx[c - 1];   // befelé mutató szakasz
+  return dx < 0 ? 180 : 0;                  // balra → 180° (a flip a hajót vízszintesen tükrözi)
+}
 function _placeShip(i) {
   if (_shipAnim[i]) return;                            // repülő hajót nem bántunk
   const c = _cellXY(_targetCell[i] || 0);
   const o = _shipOffset[i] || { dx: 0, dy: 0 };
   _shipPos[i] = { x: c.x + o.dx, y: c.y + o.dy };
-  _setShipTransform(i, c.x + o.dx, c.y + o.dy, 0, false);
+  _setShipTransform(i, c.x + o.dx, c.y + o.dy, _restHeading(_targetCell[i] || 0), false);
 }
 function _applyStacking() {
   if (!_layout) return;
