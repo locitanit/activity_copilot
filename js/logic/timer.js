@@ -2,8 +2,8 @@
  * logic/timer.js – Időzítő segédfüggvények
  * ══════════════════════════════════════════
  * Fázisok (90 másodperc összesen, vagy 105 mp időtágulással):
- *   Fázis 1 –  0–30s (vagy 0-45s) : Titkosított csatorna (Zöld)
- *   Fázis 2 – 30–60s (vagy 45-75s) : Adatbázis kapcsolat (Sárga)
+ *   Fázis 1 –  0–30s (vagy 0-45s) : Túltöltés fázis (Zöld)
+ *   Fázis 2 – 30–60s (vagy 45-75s) : Normál üzemmód (Sárga)
  *   Fázis 3 – 60–90s (vagy 75-105s) : Nyílt frekvencia – RABOLHATÓ! (Piros)
  *   Fázis 4 –   >90s (vagy >105s) : Kapcsolat megszakadt!
  *
@@ -57,10 +57,10 @@ export function getPhaseInfo(timerStartedAt, timerElapsedMs = 0, timeDilationAct
   const secondsLeft = Math.max(0, totalSeconds - elapsedSec);
 
   if (elapsedSec < phase1End) {
-    return { phase: 1, secondsLeft, label: `Titkosított csatorna${timeDilationActive ? ' (⏳ +15s)' : ''}`, colorClass: 'phase-1' };
+    return { phase: 1, secondsLeft, label: `Túltöltés fázis${timeDilationActive ? ' (⏳ +15s)' : ''}`, colorClass: 'phase-1' };
   }
   if (elapsedSec < phase2End) {
-    return { phase: 2, secondsLeft, label: 'Adatbázis kapcsolat',                   colorClass: 'phase-2' };
+    return { phase: 2, secondsLeft, label: 'Normál üzemmód',                         colorClass: 'phase-2' };
   }
   if (elapsedSec < phase3End) {
     return { phase: 3, secondsLeft, label: 'Nyílt frekvencia – RABOLHATÓ!',         colorClass: 'phase-3' };

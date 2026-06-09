@@ -239,21 +239,32 @@ function _renderPlayerLobby(el, game, playerEntries, teams, appState) {
           </div>
         </div>
 
-        ${isManual && myTeamIdx < 0
+        ${isManual
           ? `<div class="holographic-panel rounded-xl p-5">
-               <p class="font-label-md text-label-md text-on-surface-variant uppercase mb-4">Válassz flottát</p>
+               <p class="font-label-md text-label-md text-on-surface-variant uppercase mb-4">
+                 ${myTeamIdx < 0 ? 'Válassz flottát' : 'A flottád — indulásig válthatsz'}
+               </p>
                <div class="flex flex-col gap-3">
                  ${teams.map((team, idx) => {
-                    const count = playerEntries.filter(([, p]) => p.teamIndex === idx).length;
+                    const count  = playerEntries.filter(([, p]) => p.teamIndex === idx).length;
+                    const isMine = idx === myTeamIdx;
                     return `
                       <button class="team-join-btn glass-panel rounded-lg px-4 py-3 flex justify-between items-center
-                                     border-l-4 hover:bg-primary/5 transition-all font-body-lg text-body-lg"
-                              data-team="${idx}" style="border-color:${TEAM_COLORS_HEX[idx]}">
-                        <span>${_esc(team.name)}</span>
+                                     border-l-4 transition-all font-body-lg text-body-lg
+                                     ${isMine ? 'ring-2 ring-primary bg-primary/10' : 'hover:bg-primary/5'}"
+                              data-team="${idx}" ${isMine ? 'aria-current="true"' : ''} style="border-color:${TEAM_COLORS_HEX[idx]}">
+                        <span class="flex items-center gap-2">
+                          ${isMine ? '<span class="material-symbols-outlined text-base text-primary">check_circle</span>' : ''}${_esc(team.name)}
+                        </span>
                         <span class="text-on-surface-variant font-code-sm text-code-sm">(${count})</span>
                       </button>`;
                  }).join('')}
                </div>
+               ${myTeamIdx >= 0 && teammates.length > 0
+                 ? `<p class="text-on-surface-variant font-body-md text-body-md mt-4">
+                      Flottatársak: ${teammates.map(([, p]) => _esc(p.name)).join(', ')}
+                    </p>`
+                 : ''}
              </div>`
           : myTeam
             ? `<div class="holographic-panel rounded-xl p-6" style="border-color:${TEAM_COLORS_HEX[myTeamIdx]}">
@@ -280,14 +291,15 @@ function _renderPlayerLobby(el, game, playerEntries, teams, appState) {
   document.querySelectorAll('.team-join-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const teamIndex = parseInt(btn.dataset.team, 10);
-      btn.disabled = true;
+      if (teamIndex === myTeamIdx) return;           // már ebben a flottában van
+      document.querySelectorAll('.team-join-btn').forEach(b => b.disabled = true);
       try {
         await updateGameData(appState.gameCode, {
           [`players/${appState.playerId}/teamIndex`]: teamIndex,
         });
       } catch (err) {
         showToast('Hiba: ' + err.message);
-        btn.disabled = false;
+        document.querySelectorAll('.team-join-btn').forEach(b => b.disabled = false);
       }
     });
   });

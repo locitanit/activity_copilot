@@ -12,7 +12,7 @@ export const BOOST_TYPES = {
     id:    'torpedo',
     name:  'Foton torpedó',
     emoji: '💥',
-    description: 'Támadó fegyver. Célpont csapat: 30%: -1, 15%: -2, 5%: -3 fényév. 50% nem talál.',
+    description: 'Támadó fegyver. Célpont csapat: 40%: -1, 30%: -2, 20%: -3 fényév. 10% nem talál.',
     playerActivated: true,
   },
   trap: {
@@ -114,10 +114,10 @@ export async function activateTorpedo(gameCode, game, firingTeamIndex, targetTea
   // Esélyszámítás
   const roll = Math.random();
   let damage = 0;
-  if (roll < 0.05) damage = 3;
-  else if (roll < 0.20) damage = 2;
-  else if (roll < 0.50) damage = 1;
-  // 50% → damage = 0 (nem talál)
+  if (roll < 0.20) damage = 3;
+  else if (roll < 0.50) damage = 2;
+  else if (roll < 0.90) damage = 1;
+  // 10% → damage = 0 (nem talál)
 
   const updates = {
     [`teams/${firingTeamIndex}/inventory`]: firingInv,

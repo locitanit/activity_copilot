@@ -73,13 +73,13 @@ export function renderHostGame(game, appState) {
                 <div class="briefing-rule">
                   <span class="briefing-rule-num">2</span>
                   <div>
-                    <strong>TITKOSÍTOTT CSATORNA (0-30 mp):</strong> A pajzsok még tartanak. Csak a saját flottád hallja az adást.
+                    <strong>TÚLTÖLTÉS FÁZIS (0-30 mp):</strong> A rendszerek maximális fordulatszámon pörögnek. Csak a saját flottád hallja az adást. Ha ebben a kritikus időablakban sikerül a dekódolás, Houston azonnali taktikai fejlesztést küld a hajónak!
                   </div>
                 </div>
                 <div class="briefing-rule">
                   <span class="briefing-rule-num">3</span>
                   <div>
-                    <strong>ADATBÁZIS KAPCSOLAT (30-60 mp):</strong> A hajó számítógépe engedélyezi a fizikai archívumok elérését – a flotta bevetheti a korábbi küldetések hajónaplóit!
+                    <strong>NORMÁL ÜZEMMÓD (30-60 mp):</strong> Az energiaellátás stabilizálódik. A pajzsok még tartanak, így továbbra is csak a saját legénységed fejtheti meg a kódot, de a sikeres dekódolásért extra fejlesztés már nem jár.
                   </div>
                 </div>
                 <div class="briefing-rule">
@@ -227,9 +227,12 @@ export function renderHostGame(game, appState) {
             <span class="material-symbols-outlined text-4xl">vpn_key</span>
           </div>
           ${currentTurn.word ? `
-            <div class="flex justify-between items-start">
+            <div class="flex justify-between items-start gap-3 flex-wrap">
               <h2 class="font-label-md text-label-md uppercase tracking-widest" style="color:${activeColor}">Aktuális Küldetés</h2>
-              <span class="font-code-sm text-code-sm text-on-surface-variant px-2 py-1 bg-surface-container rounded">${currentTurn.points ?? '–'} Fényév</span>
+              ${currentTurn.activePlayerId && game.players?.[currentTurn.activePlayerId] ? `
+                <span class="flex items-center gap-1.5 font-label-md text-label-md px-2 py-1 bg-surface-container rounded border border-outline-variant/40" style="color:${activeColor}" title="Soron lévő asztronauta">
+                  <span class="material-symbols-outlined text-base">person</span>${_esc(game.players[currentTurn.activePlayerId].name)}
+                </span>` : ''}
             </div>
             <div class="text-center py-6">
               <h1 class="font-display-lg text-display-lg text-on-surface tracking-widest drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">${_esc(currentTurn.word)}</h1>

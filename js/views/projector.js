@@ -137,13 +137,13 @@ function _renderBriefing(el, game) {
             <div class="briefing-rule">
               <span class="briefing-rule-num">2</span>
               <div>
-                <strong>TITKOSÍTOTT CSATORNA (0-30 mp):</strong> A pajzsok még tartanak. Csak a saját flottád hallja az adást.
+                <strong>TÚLTÖLTÉS FÁZIS (0-30 mp):</strong> A rendszerek maximális fordulatszámon pörögnek. Csak a saját flottád hallja az adást. Ha ebben a kritikus időablakban sikerül a dekódolás, Houston azonnali taktikai fejlesztést küld a hajónak!
               </div>
             </div>
             <div class="briefing-rule">
               <span class="briefing-rule-num">3</span>
               <div>
-                <strong>ADATBÁZIS KAPCSOLAT (30-60 mp):</strong> A hajó számítógépe engedélyezi a fizikai archívumok elérését – a flotta bevetheti a korábbi küldetések hajónaplóit!
+                <strong>NORMÁL ÜZEMMÓD (30-60 mp):</strong> Az energiaellátás stabilizálódik. A pajzsok még tartanak, így továbbra is csak a saját legénységed fejtheti meg a kódot, de a sikeres dekódolásért extra fejlesztés már nem jár.
               </div>
             </div>
             <div class="briefing-rule">

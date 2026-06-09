@@ -46,7 +46,7 @@ export const ANOMALY_EVENTS = {
     id:                 'comms',
     name:               'Kommunikációs zavar',
     emoji:              '📡',
-    generalDescription: 'A következő körben nincs Titkosított csatorna – azonnal Nyílt Frekvencia aktiválódik!',
+    generalDescription: 'A következő körben nincs Túltöltés fázis – azonnal Nyílt Frekvencia aktiválódik!',
   },
 };
 
