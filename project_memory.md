@@ -226,7 +226,10 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
     skip straight to results. `_resetStage()` clears `_finishState` so a new game can replay it.
   - **Finished/winner screens** redesigned to a podium (medal + "Megtett táv") + full ranked
     scoreboard — `winner.js` (host/players, has the "Új küldetés" button) and `_renderFinished`
-    (projector, same layout, no button).
+    (projector, same layout, no button). **Tie handling:** a single winner colors the whole podium
+    in its team color; a TIE (≥2) uses a neutral GOLD (`#feb528`) medal/glow, a `border-image`
+    gradient across all tied colors, and each winner name in its OWN team color (the scoreboard
+    highlights every tied team). Avoids the old "only winners[0]'s color shows" look.
 - **Scoring** (`scoring.js`): own team = "solved", another = "stolen", multiple = "shared"
   (points integer-split, remainder lost). Solving in phase 1 earns a boost. Reaching
   `settings.boardLength` sets `status='finished'` and short-circuits (boosts/traps/anomalies

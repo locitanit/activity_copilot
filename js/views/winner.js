@@ -18,7 +18,13 @@ export function renderWinner(game, appState) {
   const winnerIdx = new Set(winners.map(w => w.index));
   const ranked   = [...teams].sort((a, b) => b.score - a.score);
   const primary  = winners[0] || { index: 0, name: '–', score: 0 };
-  const wColor   = TEAM_COLORS[primary.index] || '#feb528';
+  const isTie    = winners.length > 1;
+  // Döntetlen: semleges ARANY emelvény-akcentus + minden győztes a SAJÁT színét
+  // kapja a nevén és a felső szegély színátmenetében (ne csak az első csapaté).
+  const accent   = isTie ? '#feb528' : (TEAM_COLORS[primary.index] || '#feb528');
+  const topBorder = isTie
+    ? `border-image:linear-gradient(90deg, ${winners.map(w => TEAM_COLORS[w.index] || '#feb528').join(', ')}) 1`
+    : `border-color:${accent}`;
   const code     = (appState && appState.gameCode) || state.gameCode || '';
 
   el.innerHTML = `
@@ -40,22 +46,24 @@ export function renderWinner(game, appState) {
           </div>
 
           <div class="holographic-panel rounded-xl p-8 sm:p-10 w-full max-w-md flex flex-col items-center relative border-t-4"
-               style="border-color:${wColor};box-shadow:0 0 28px ${wColor}44">
+               style="${topBorder};box-shadow:0 0 28px ${accent}44">
             <div class="relative mb-4">
-              <span class="material-symbols-outlined" style="font-size:108px;color:${wColor};text-shadow:0 0 22px ${wColor}cc;font-variation-settings:'FILL' 1">military_tech</span>
+              <span class="material-symbols-outlined" style="font-size:108px;color:${accent};text-shadow:0 0 22px ${accent}cc;font-variation-settings:'FILL' 1">military_tech</span>
               <span class="material-symbols-outlined text-white absolute -top-1 -right-1 animate-pulse" style="font-size:22px">spark</span>
             </div>
 
-            <div class="font-label-md text-label-md uppercase tracking-widest mb-1" style="color:${wColor}">
-              ${winners.length > 1 ? 'Győztes flották' : 'Győztes parancsnokság'}
+            <div class="font-label-md text-label-md uppercase tracking-widest mb-1" style="color:${accent}">
+              ${isTie ? 'Győztes flották' : 'Győztes parancsnokság'}
             </div>
-            ${winners.map(w => `
-              <h3 class="font-headline-lg text-headline-lg text-white uppercase tracking-wide">${_esc(w.name)}</h3>`).join('')}
+            ${winners.map(w => {
+              const nc = isTie ? (TEAM_COLORS[w.index] || '#fff') : '#fff';
+              return `<h3 class="font-headline-lg text-headline-lg uppercase tracking-wide" style="color:${nc}${isTie ? `;text-shadow:0 0 12px ${nc}66` : ''}">${_esc(w.name)}</h3>`;
+            }).join('')}
 
             <div class="w-full bg-surface-container-low/60 rounded-lg p-4 mt-5 border flex justify-between items-center"
-                 style="border-color:${wColor}55">
+                 style="border-color:${accent}55">
               <span class="font-body-md text-body-md text-on-surface-variant">Megtett táv</span>
-              <span class="font-headline-lg text-headline-lg font-bold" style="color:${wColor}">${maxScore}
+              <span class="font-headline-lg text-headline-lg font-bold" style="color:${accent}">${maxScore}
                 <span class="text-sm font-normal text-on-surface-variant ml-1">fényév</span></span>
             </div>
           </div>
