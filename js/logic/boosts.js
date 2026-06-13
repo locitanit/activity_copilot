@@ -119,12 +119,10 @@ export async function activateTorpedo(gameCode, game, firingTeamIndex, targetTea
   else if (roll < 0.90) damage = 1;
   // 10% → damage = 0 (nem talál)
 
-  const updates = {
-    [`teams/${firingTeamIndex}/inventory`]: firingInv,
-  };
-
   let shielded = false;
   let logMsg;
+  let targetInvAfterShield = null;
+  let newTargetScore = null;
 
   if (damage > 0) {
     // Pajzs ellenőrzés a célponton
@@ -135,33 +133,51 @@ export async function activateTorpedo(gameCode, game, firingTeamIndex, targetTea
       // Pajzs kivédte!
       shielded = true;
       damage = 0;
-      updates[`teams/${targetTeamIndex}/inventory`] = shieldResult.newInventory;
+      targetInvAfterShield = shieldResult.newInventory;
       logMsg = `🛡️ ${targetTeam.name} kvantum pajzsa kivédte ${firingTeam.name} torpedóját!`;
     } else {
       // Találat!
-      const newScore = Math.max(0, (targetTeam.score || 0) - damage);
-      updates[`teams/${targetTeamIndex}/score`] = newScore;
+      newTargetScore = Math.max(0, (targetTeam.score || 0) - damage);
       logMsg = `🚀 ${firingTeam.name} torpedót lőtt ${targetTeam.name} flottájára → -${damage} fényév!`;
     }
   } else {
     logMsg = `🚀 ${firingTeam.name} torpedója elkerülte ${targetTeam.name} flottáját – nem talált!`;
   }
 
-  // ── Atomi írás: a pont-/inventory-változás ÉS a napló-bejegyzés EGY
-  //    snapshotban érkezzen a kivetítőhöz, hogy a célpont hátralépését
-  //    az explózió utánra tudja halasztani (előbb robbanás, aztán mozgás).
   const fx = {
     kind: 'torpedo',
     team: firingTeamIndex,
     target: targetTeamIndex,
     outcome: shielded ? 'shielded' : (damage > 0 ? 'hit' : 'miss'),
   };
-  const freshLog = await getBoostLog(gameCode);                 // friss napló (clobber-véd, mint appendBoostLog)
-  const newLog = [...freshLog, { message: logMsg, timestamp: Date.now(), fx }];
-  if (newLog.length > 500) newLog.splice(0, newLog.length - 500);
-  updates.boostLog = newLog;
+  const entry = { message: logMsg, timestamp: Date.now(), fx };
 
-  await updateGameData(gameCode, updates);
+  if (damage > 0) {
+    // ── TALÁLAT: a pont-/inventory-változás ÉS a napló-bejegyzés EGY
+    //    snapshotban érkezzen a kivetítőhöz, hogy a célpont hátralépését
+    //    az explózió utánra tudja halasztani (előbb robbanás, aztán mozgás).
+    const updates = {
+      [`teams/${firingTeamIndex}/inventory`]: firingInv,
+      [`teams/${targetTeamIndex}/score`]: newTargetScore,
+    };
+    const freshLog = await getBoostLog(gameCode);              // friss napló (clobber-véd)
+    const newLog = [...freshLog, entry];
+    if (newLog.length > 500) newLog.splice(0, newLog.length - 500);
+    updates.boostLog = newLog;
+    await updateGameData(gameCode, updates);
+  } else {
+    // ── TÉVESZTÉS / PAJZS: nincs pontváltozás és nincs hátralépés, így nem
+    //    kell az egy-snapshotos atomicitás. Az inventory-t külön írjuk, a
+    //    naplót pedig a TRANZAKCIÓS appendBoostLog-gal fűzzük hozzá – így egy
+    //    egyidejű írás (pl. a host kör-vége) NEM tudja elnyelni a bejegyzést.
+    //    (Ez volt a „tévesztett torpedó nincs a naplóban” hiba gyökere.)
+    const invUpdates = { [`teams/${firingTeamIndex}/inventory`]: firingInv };
+    if (targetInvAfterShield !== null) {
+      invUpdates[`teams/${targetTeamIndex}/inventory`] = targetInvAfterShield;
+    }
+    await updateGameData(gameCode, invUpdates);
+    await appendBoostLog(gameCode, entry);
+  }
 
   return { hit: damage > 0, damage, shielded };
 }

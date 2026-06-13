@@ -40,6 +40,7 @@ let _commPrev = false;         // commDisruptionActive előző érték (felfutó
 let _live = false;             // a baseline beállt-e (csatlakozás-játék-közben őr)
 let _assetsKicked = false;     // képek előtöltése egyszer
 let _lastGame = null;          // legutóbbi game snapshot (az anomália-felugró halasztásához)
+let _finishState = null;       // null | 'running' | 'done' – a győzelmi mozi életciklusa
 const _reduced = (() => {
   try {
     const mm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -66,7 +67,7 @@ export function renderProjector(game) {
   // a játék-vége animáció közben esetet is).
   if (game.status === 'lobby')    { _resetStage(); _renderLobby(el, game);    return; }
   if (game.status === 'briefing') { _resetStage(); _renderBriefing(el, game);  return; }
-  if (game.status === 'finished') { _resetStage(); _renderFinished(el, game); return; }
+  if (game.status === 'finished') { _handleFinished(el, game); return; }
 
   _renderPlaying(el, game);
 }
@@ -175,31 +176,279 @@ function _renderBriefing(el, game) {
 
 // ── Győztes nézet ─────────────────────────────────────────────
 function _renderFinished(el, game) {
-  const teams      = game.teams || [];
-  const maxScore   = Math.max(...teams.map(t => t.score), 0);
-  const winners    = teams.map((t, i) => ({ ...t, _idx: i })).filter(t => t.score === maxScore);
+  const teams    = (game.teams || []).map((t, i) => ({ ...t, _idx: i, score: t.score || 0 }));
+  const maxScore = teams.length ? Math.max(...teams.map(t => t.score)) : 0;
+  const winners  = teams.filter(t => t.score === maxScore);
+  const winIdx   = new Set(winners.map(w => w._idx));
+  const ranked   = [...teams].sort((a, b) => b.score - a.score);
+  const primary  = winners[0] || { _idx: 0, name: '–', score: 0 };
+  const wColor   = TEAM_COLORS[primary._idx] || '#feb528';
 
   el.innerHTML = `
     ${_hudOrnaments()}
-    <div class="h-screen flex flex-col items-center justify-center text-center px-12">
-      <div class="text-[7rem] leading-none mb-4">🏆</div>
-      <div class="font-label-md text-label-md text-on-surface-variant uppercase tracking-[0.2em] mb-2">
-        ${winners.length > 1 ? 'Győztes flották' : 'Győztes flotta'}
-      </div>
-      ${winners.map(w => `
-        <div class="font-display-lg text-[4.5rem] leading-tight uppercase tracking-widest mb-2"
-             style="color:${TEAM_COLORS[w._idx] || '#fbbf24'};text-shadow:0 0 50px ${TEAM_COLORS[w._idx] || '#fbbf24'}80">
-          ${_esc(w.name)}
-        </div>`).join('')}
-      <div class="flex gap-6 justify-center flex-wrap mt-8">
-        ${teams.map((t, i) => `
-          <div class="glass-panel px-8 py-4 text-center border-2" style="border-color:${TEAM_COLORS[i]}">
-            <div class="font-display-md text-[2.5rem] leading-none font-black" style="color:${TEAM_COLORS[i]}">${t.score}</div>
-            <div class="font-body-md text-body-md text-on-surface-variant mt-1">${_esc(t.name)}</div>
-          </div>`).join('')}
-      </div>
+    <div class="h-screen w-full flex items-center justify-center p-10 overflow-hidden">
+      <main class="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-10 lg:gap-14 items-center justify-center">
+
+        <!-- Győztes emelvény -->
+        <section class="flex-1 flex flex-col items-center text-center gap-6">
+          <div class="space-y-1">
+            <div class="font-label-md text-label-md text-primary uppercase tracking-[0.2em] opacity-80">Küldetés jelentés</div>
+            <div class="font-display-lg text-[3.4rem] leading-tight text-white uppercase tracking-widest drop-shadow-[0_0_18px_rgba(0,212,255,0.5)]">Küldetés teljesítve</div>
+          </div>
+          <div class="glass-panel rounded-xl p-10 w-full max-w-md flex flex-col items-center relative border-t-4"
+               style="border-color:${wColor};box-shadow:0 0 36px ${wColor}55">
+            <span class="material-symbols-outlined mb-3" style="font-size:128px;color:${wColor};text-shadow:0 0 26px ${wColor}cc;font-variation-settings:'FILL' 1">military_tech</span>
+            <div class="font-label-md text-label-md uppercase tracking-widest mb-1" style="color:${wColor}">
+              ${winners.length > 1 ? 'Győztes flották' : 'Győztes flotta'}
+            </div>
+            ${winners.map(w => `<div class="font-display-md text-[2.6rem] leading-tight text-white uppercase tracking-wide">${_esc(w.name)}</div>`).join('')}
+            <div class="w-full bg-surface-container-low/60 rounded-lg p-4 mt-5 border flex justify-between items-center" style="border-color:${wColor}55">
+              <span class="font-body-lg text-body-lg text-on-surface-variant">Megtett táv</span>
+              <span class="font-display-md text-[2rem] leading-none font-bold" style="color:${wColor}">${maxScore} <span class="text-base font-normal text-on-surface-variant">fényév</span></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Végső rangsor -->
+        <section class="flex-1 w-full max-w-xl">
+          <div class="glass-panel rounded-xl p-6 flex flex-col border-r-4 border-primary/30">
+            <div class="flex items-center gap-3 border-b border-primary/20 pb-4 mb-5">
+              <span class="material-symbols-outlined text-primary">leaderboard</span>
+              <span class="font-headline-lg text-headline-lg text-primary">Végső rangsor</span>
+            </div>
+            <div class="flex flex-col gap-3">
+              ${ranked.map((t, rank) => {
+                const c = TEAM_COLORS[t._idx] || '#888';
+                const isWin = winIdx.has(t._idx);
+                return `
+                  <div class="flex items-center p-4 rounded-lg border-l-4 relative overflow-hidden" style="border-color:${c};background:${isWin ? c + '14' : 'rgba(255,255,255,0.02)'}">
+                    ${isWin ? `<div class="absolute right-0 top-0 h-full w-32 pointer-events-none" style="background:linear-gradient(to left, ${c}24, transparent)"></div>` : ''}
+                    <div class="w-10 ${isWin ? 'font-display-md text-[2rem]' : 'font-headline-lg text-headline-lg'} font-bold" style="color:${isWin ? c : '#bbc9cf'}">${rank + 1}</div>
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center mr-4 border shrink-0" style="background:${c}1f;border-color:${c}55">
+                      <span class="material-symbols-outlined" style="font-size:24px;color:${c}">rocket_launch</span>
+                    </div>
+                    <div class="flex-1 min-w-0"><div class="font-headline-lg-mobile text-headline-lg-mobile text-white font-semibold truncate">${_esc(t.name)}</div></div>
+                    <div class="text-right z-10 shrink-0">
+                      <div class="${isWin ? 'font-display-md text-[2rem]' : 'font-headline-lg text-headline-lg'} font-bold" style="color:${c}">${t.score}</div>
+                      <div class="font-code-sm text-code-sm text-on-surface-variant">fényév</div>
+                    </div>
+                  </div>`;
+              }).join('')}
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
   `;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Győzelmi mozi: a táblán lévő hajók becsúsznak a célba → 360° hurok
+//  → tűzijáték + flotta-elrepülés (győztes színben), MAJD az eredmény.
+// ════════════════════════════════════════════════════════════════
+function _handleFinished(el, game) {
+  // Már fut a mozi → ne indítsuk újra, csak jegyezzük a legfrissebb állapotot.
+  if (_finishState === 'running') { _lastGame = game; return; }
+  // Lefutott (vagy közvetlen betöltés a győzelembe / mozgáscsökkentés) → eredmény.
+  if (_finishState === 'done' || !_live || !_stage || _reduced) {
+    _resetStage(); _finishState = 'done'; _renderFinished(el, game); return;
+  }
+  // Élő játékból értünk ide → játsszuk le a mozit a meglévő táblán.
+  _finishState = 'running';
+  _runFinishCinematic(el, game);
+}
+
+async function _runFinishCinematic(el, game) {
+  const boardLength = game.settings?.boardLength || 30;
+  const teams   = game.teams || [];
+  const maxScore = Math.max(...teams.map(t => t.score || 0), 0);
+  const winners = teams.map((t, i) => ({ ...t, _idx: i })).filter(t => (t.score || 0) === maxScore);
+  _lastGame = game;
+
+  try {
+    // 1) Záró mozgás: a győztes(ek) becsúsznak a célmezőre (score-diff alapján).
+    _layoutStage(game, boardLength);
+    _diffAndAnimate(game, boardLength);
+    await _waitForShipsIdle(6000);
+
+    // 2) 360° hurok a győztes hajó(k)ra.
+    await _loopWinners(winners.map(w => w._idx));
+
+    // 3) Tűzijáték + győztes flotta elrepülése (győztes színben).
+    await _playWinCinematic(el, winners);
+  } catch (_) { /* ha bármi elromlik, akkor is mutassuk az eredményt */ }
+
+  _resetStage();
+  _finishState = 'done';
+  _renderFinished(el, _lastGame || game);
+}
+
+function _waitForShipsIdle(maxMs) {
+  return new Promise((resolve) => {
+    const start = _now();
+    const check = () => {
+      if (!_anyShipAnimating() || (_now() - start) > maxMs) { resolve(); return; }
+      requestAnimationFrame(check);
+    };
+    setTimeout(() => requestAnimationFrame(check), 80);  // hagyjuk a tweent elindulni
+  });
+}
+
+function _loopWinners(idxs) {
+  if (_reduced || !_layout) return Promise.resolve();
+  return Promise.all((idxs || []).map(i => _loopShip(i)));
+}
+
+// Egy hajó "loop the loop"-ja: körpályán visszatér a kiindulópontra, közben
+// a hajótest egy teljes 360°-ot fordul (győzelmi szaltó).
+function _loopShip(i) {
+  return new Promise((resolve) => {
+    const w = _shipEls[i], craft = _shipCraft[i];
+    if (!w || !craft || !_layout) { resolve(); return; }
+    if (_shipAnim[i]) { _shipAnim[i].cancel(); _shipAnim[i] = null; }
+    const base = _shipPos[i] || _cellXY(_targetCell[i] || 0);
+    const sw = _layout.shipW, sh = _layout.shipH;
+    const R = Math.max(34, _layout.baseNode * 1.35);
+    const dur = 1150;
+    const start = _now();
+    const handle = { raf: 0, cancel() { cancelAnimationFrame(this.raf); } };
+    _shipAnim[i] = handle;
+    const step = (now) => {
+      if (_shipAnim[i] !== handle) { resolve(); return; }
+      const p = Math.min(1, (now - start) / dur);
+      const e = _easeInOutCubic(p);
+      const ang = Math.PI / 2 + e * Math.PI * 2;     // alulról indul, teljes kör
+      const x = base.x + Math.cos(ang) * R;
+      const y = (base.y - R) + Math.sin(ang) * R;
+      w.style.transform = `translate(${(x - sw / 2).toFixed(1)}px, ${(y - sh / 2).toFixed(1)}px)`;
+      craft.style.transform = `rotate(${(e * 360).toFixed(1)}deg)`;
+      craft.classList.add('proj-ship--thrusting');
+      _shipPos[i] = { x, y };
+      if (p < 1) { handle.raf = requestAnimationFrame(step); }
+      else {
+        _shipAnim[i] = null;
+        craft.classList.remove('proj-ship--thrusting');
+        _placeShip(i);
+        resolve();
+      }
+    };
+    handle.raf = requestAnimationFrame(step);
+  });
+}
+
+// Teljes képernyős vászon: tűzijáték a győztes szín(ek)ben + flotta-elrepülés
+// győztes-színű hajtómű-csíkokkal. Promise-szal tér vissza a vége után.
+function _playWinCinematic(el, winners) {
+  return new Promise((resolve) => {
+    if (_reduced) { resolve(); return; }
+    const colors     = winners.map(w => TEAM_COLORS[w._idx] || '#feb528');
+    const shipColors = winners.map(w => SHIP_COLORS[w._idx] || SHIP_COLORS[0]);
+    const W = window.innerWidth, H = window.innerHeight;
+    if (!W || !H) { resolve(); return; }
+
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = 'position:fixed;inset:0;z-index:60;pointer-events:none;';
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { resolve(); return; }
+    ctx.scale(dpr, dpr);
+    el.appendChild(canvas);
+
+    const shipImgs = shipColors.map(c => { const im = new Image(); im.src = `img/spaceship_${c}.png`; return im; });
+
+    const DURATION = 4200;
+    const start = _now();
+    const particles = [];
+    let lastBurst = -999;
+
+    const fleetN = 5;
+    const ships = [];
+    for (let k = 0; k < fleetN; k++) {
+      ships.push({
+        img:   shipImgs[k % shipImgs.length],
+        color: colors[k % colors.length],
+        delay: 600 + k * 280,
+        y:     H * (0.30 + (k - (fleetN - 1) / 2) * 0.075),
+        size:  Math.max(48, Math.min(96, H * 0.10)) + (k % 2 ? 8 : 0),
+        speed: (W + 460) / 1700,
+        trail: [],
+      });
+    }
+
+    const burst = (x, y, color) => {
+      const n = 48;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + Math.random() * 0.25;
+        const v = 1.5 + Math.random() * 3.6;
+        particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, color, size: 1.5 + Math.random() * 2.4 });
+      }
+    };
+
+    const frame = (now) => {
+      const t = now - start;
+      ctx.clearRect(0, 0, W, H);
+      // Mozis háttér: az alatta lévő (immár statikus) tábla + HUD elhalványítása,
+      // hogy a tűzijáték és a flotta kiemelkedjen. Az elején lágyan úszik be.
+      ctx.fillStyle = `rgba(4,8,18,${(0.62 * Math.min(1, t / 700)).toFixed(3)})`;
+      ctx.fillRect(0, 0, W, H);
+
+      if (t < DURATION - 850 && now - lastBurst > 330) {
+        lastBurst = now;
+        burst(W * (0.12 + Math.random() * 0.76), H * (0.10 + Math.random() * 0.42),
+              colors[Math.floor(Math.random() * colors.length)]);
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.vy += 0.035; p.vx *= 0.985; p.vy *= 0.985;
+        p.x += p.vx; p.y += p.vy; p.life -= 0.011;
+        if (p.life <= 0) { particles.splice(i, 1); continue; }
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.color; ctx.shadowBlur = 8; ctx.shadowColor = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+
+      for (const s of ships) {
+        const st = t - s.delay;
+        if (st < 0) continue;
+        const x = -220 + s.speed * st;
+        if (x > W + 240) continue;
+        const y = s.y + Math.sin(st / 300) * 14;
+        s.trail.push({ x, y });
+        if (s.trail.length > 28) s.trail.shift();
+        for (let i = 0; i < s.trail.length; i++) {
+          const tr = s.trail[i];
+          const a = i / s.trail.length;
+          ctx.globalAlpha = a * 0.5;
+          ctx.fillStyle = s.color; ctx.shadowBlur = 12; ctx.shadowColor = s.color;
+          ctx.beginPath(); ctx.arc(tr.x - s.size * 0.5, tr.y, Math.max(0.6, s.size * 0.22 * a), 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+        const img = s.img, h = s.size * 0.58;
+        if (img && img.complete && img.naturalWidth) {
+          ctx.drawImage(img, x - s.size / 2, y - h / 2, s.size, h);
+        } else {
+          ctx.fillStyle = s.color; ctx.shadowBlur = 10; ctx.shadowColor = s.color;
+          ctx.beginPath();
+          ctx.moveTo(x + s.size * 0.42, y);
+          ctx.lineTo(x - s.size * 0.30, y - s.size * 0.22);
+          ctx.lineTo(x - s.size * 0.10, y);
+          ctx.lineTo(x - s.size * 0.30, y + s.size * 0.22);
+          ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0;
+        }
+      }
+
+      if (t < DURATION) { requestAnimationFrame(frame); }
+      else {
+        canvas.style.transition = 'opacity 0.5s'; canvas.style.opacity = '0';
+        setTimeout(() => { if (canvas.parentNode) canvas.parentNode.removeChild(canvas); resolve(); }, 520);
+      }
+    };
+    requestAnimationFrame(frame);
+  });
 }
 
 // ── Játék közbeni nézet (STAR COMMAND HUD) ─────────────────────
@@ -448,6 +697,7 @@ function _resetStage() {
   _layout = null; _lastStaticSig = null;
   _shipEls = []; _shipCraft = []; _shipAnim = []; _shipPos = []; _targetCell = []; _shipOffset = [];
   _fxCursor = 0; _anomalyCursor = 0; _commPrev = false; _live = false; _assetsKicked = false; _lastGame = null;
+  _finishState = null;
 }
 
 function _ensureStage(game, boardLength, teamCount) {

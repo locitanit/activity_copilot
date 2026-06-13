@@ -213,7 +213,20 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
     ship grows at the exit — no path glide); **torpedo hit defers the target's recoil until after the
     explosion** — for this to work the score change and the `fx` log entry must arrive in ONE snapshot,
     so `boosts.activateTorpedo` writes them atomically (reads `getBoostLog`, appends, writes score +
-    inventory + boostLog in a single `updateGameData`).
+    inventory + boostLog in a single `updateGameData`). (Only HITS still do this; miss/shielded now
+    append via the transactional `appendBoostLog` — see the §7 event-log note.)
+  - **Win cinematic** (`_handleFinished` → `_runFinishCinematic`): when `status` flips to `finished`
+    while the projector is LIVE (stage mounted), the finished branch does NOT immediately reset+show
+    results. Instead it plays a sequence on the existing board, gated by `_finishState`
+    (`null`→`'running'`→`'done'`): (1) final ship move to the goal (`_diffAndAnimate`), (2) a 360°
+    loop-the-loop per winner ship (`_loopShip`), (3) a full-screen `<canvas>` cinematic
+    (`_playWinCinematic`) — fireworks + a winning-fleet flyby with engine trails, all in the winner
+    team color(s), over a dimmed backdrop — THEN `_renderFinished`. Re-renders during `'running'`
+    are ignored; `prefers-reduced-motion`/low-CPU/`!_live` (projector opened after the game ended)
+    skip straight to results. `_resetStage()` clears `_finishState` so a new game can replay it.
+  - **Finished/winner screens** redesigned to a podium (medal + "Megtett táv") + full ranked
+    scoreboard — `winner.js` (host/players, has the "Új küldetés" button) and `_renderFinished`
+    (projector, same layout, no button).
 - **Scoring** (`scoring.js`): own team = "solved", another = "stolen", multiple = "shared"
   (points integer-split, remainder lost). Solving in phase 1 earns a boost. Reaching
   `settings.boardLength` sets `status='finished'` and short-circuits (boosts/traps/anomalies
@@ -238,9 +251,15 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
   movement (scoring solved/stolen/shared/unsolved, hyperdrive penalty, mission-complete),
   boost gain/use + effect (boosts.js), and anomaly + effect (anomaly.js). It is shown on the
   **projector**, so messages **never contain the secret word** — only task type, points, and
-  score movements (`prev→new`). Append via `appendBoostLog()` in firebase-config (re-reads the
-  latest log before writing, so the host's many sequential per-turn writes don't clobber each
-  other); `addBoostLog(gameCode, game, msg)` is a thin wrapper (its `game` arg is now unused).
+  score movements (`prev→new`). Append via `appendBoostLog()` in firebase-config — it now uses a
+  Firebase **`runTransaction`** on `boostLog` so CONCURRENT writers (multiple phones + the host's
+  turn-end) can't clobber each other (the old get()+update() read-modify-write could drop an
+  entry). `addBoostLog(gameCode, game, msg)` is a thin wrapper (its `game` arg is now unused).
+  **Torpedo logging:** a HIT still writes score+inventory+log in ONE atomic `updateGameData`
+  (needed for the deferred-recoil choreography); a MISS/SHIELDED writes inventory then appends
+  the log via the transactional `appendBoostLog` (no recoil → no atomicity needed). This fixed
+  the "missed torpedo never appears in the log" bug — a clobbered miss left no trace, while a
+  clobbered hit still showed its score drop.
 
 ---
 
@@ -280,3 +299,13 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
   pushed ship; wormhole = shrink/teleport/grow; torpedo recoil waits for the explosion
   (atomic score+log write); dashboard task type shows its `fényév`; landing station hidden on phones.
 - **Player boost tooltips**: `.boost-info` shows each boost's description on hover (PC) / tap (phone).
+- **Win cinematic + results redesign (2026-06)**: the projector now plays a finish sequence —
+  final move to the goal → winner-ship 360° loop → fireworks + winning-fleet flyby (engine trails in
+  the winner color, dimmed backdrop) → results (`_finishState`-gated, see §7). Both the projector
+  finished screen and `winner.js` were rebuilt to a podium + ranked-scoreboard HUD.
+- **boostLog clobber fix**: `appendBoostLog` now uses a Firebase `runTransaction`; torpedo
+  miss/shielded route through it (hit stays atomic). Fixes "missed torpedo not logged" under
+  concurrent writes.
+- **Two new databases** ("Általános" 200 words, "Mesterséges intelligencia" 10), **torpedo retune**
+  (20%/-3, 30%/-2, 40%/-1, 10% miss), **phase rename** (Túltöltés fázis / Normál üzemmód), **manual
+  lobby team-switching until launch**, dashboard active-astronaut display.

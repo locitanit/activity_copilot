@@ -12,6 +12,7 @@ import {
   update,
   onValue,
   get,
+  runTransaction,
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
 
@@ -164,14 +165,18 @@ export async function getGame(code) {
  * @param {number} [cap=500]  Megőrzött bejegyzések maximuma
  */
 export async function appendBoostLog(code, entry, cap = 500) {
-  const snap = await get(ref(db, `games/${code}/boostLog`));
-  const raw  = snap.val();
-  const log  = Array.isArray(raw)
-    ? [...raw]
-    : (raw && typeof raw === 'object' ? Object.values(raw) : []);
-  log.push(entry);
-  if (log.length > cap) log.splice(0, log.length - cap);
-  await update(ref(db), { [`games/${code}/boostLog`]: log });
+  // runTransaction: konfliktus esetén automatikusan újraolvas+újrapróbál, így
+  // EGYIDEJŰ írások (több telefon, host kör-vége) sem írják felül egymást –
+  // a régi get()+update() read-modify-write párost lecserélve (clobber-fix).
+  const logRef = ref(db, `games/${code}/boostLog`);
+  await runTransaction(logRef, (current) => {
+    const log = Array.isArray(current)
+      ? [...current]
+      : (current && typeof current === 'object' ? Object.values(current) : []);
+    log.push(entry);
+    if (log.length > cap) log.splice(0, log.length - cap);
+    return log;
+  });
 }
 
 /**
