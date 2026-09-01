@@ -143,7 +143,8 @@ export async function awardSharedPoints(gameCode, game, winnerTeamIndexes) {
   const phase = getCurrentPhase(
     currentTurn.timerStartedAt,
     currentTurn.timerElapsedMs || 0,
-    timeDilation
+    timeDilation,
+    !!currentTurn.commDisruptionActive   // nyílt frekvenciás körben végig 3. fázis → nincs boost
   );
 
   if (phase === 1 && normalizedWinnerIndexes.length === 1) {
@@ -177,15 +178,19 @@ export async function awardSharedPoints(gameCode, game, winnerTeamIndexes) {
       .sort((a, b) => teams[b].score - teams[a].score);
     let postAnomalyTeams        = teams;
     let commDisruptionTriggered = false;
+    let forceNextTaskType       = null;
+    let lastAnomalyId           = game.lastAnomalyId || null;
     for (const idx of anomalyCandidates) {
       try {
         const result = await triggerAnomalyEvent(
           gameCode,
-          { ...game, teams: postAnomalyTeams },
+          { ...game, teams: postAnomalyTeams, lastAnomalyId },
           idx
         );
         postAnomalyTeams = result.updatedTeams;
         if (result.commDisruptionActive) commDisruptionTriggered = true;
+        if (result.forceNextTaskType) forceNextTaskType = result.forceNextTaskType;
+        if (result.event?.id) lastAnomalyId = result.event.id;   // körön belüli ismétlés-tiltás is
       } catch (_) { /* silent */ }
     }
 
@@ -205,6 +210,7 @@ export async function awardSharedPoints(gameCode, game, winnerTeamIndexes) {
       ...game,
       teams:                postAnomalyTeams,
       commDisruptionActive: game.commDisruptionActive || commDisruptionTriggered,
+      forceNextTaskType,
       turnHistory,
       players: _buildUpdatedPlayers(players, activePlayerId),
     });

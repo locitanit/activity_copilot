@@ -194,7 +194,7 @@ async function _handleStartGame(game, playerEntries, appState) {
     wordRevealed:   false,
   };
 
-  updates['status']       = 'briefing';
+  updates['status']       = 'playing';
   updates['currentTurn']  = currentTurn;
   updates['upcomingTurns'] = upcomingTurns;
   updates['turnHistory']  = [];

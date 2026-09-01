@@ -2,9 +2,9 @@
    RMG Astro-Activity  |  style.css
    ------------------------------------------------------------
    Only the bits NOT handled by Tailwind live here:
-   theme variables, splash, toast, view system, the mission
-   briefing hologram, the boost chips, the host projector
-   dropdown, and the anomaly modal (shared by host + projector).
+   theme variables, splash, toast, view system, the boost chips,
+   the host projector dropdown, and the anomaly modal (shared by
+   host + projector).
    ============================================================ */
 
 /* ── CSS Variables ─────────────────────────────────────────── */
@@ -224,277 +224,6 @@ h1, h2, h3 { font-family: 'Exo 2', system-ui, sans-serif; }
 .boost-info[data-tooltip].tip-open::after { opacity: 1; }
 
 /* ============================================================
-   MISSION BRIEFING – HOLOGRAPHIC OVERLAY
-   (shared by host-game / player-game / projector briefing)
-   ============================================================ */
-
-.briefing-overlay {
-  position: relative;
-  width: 100%;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  animation: briefing-fade-in 1.2s ease-out;
-}
-
-@keyframes briefing-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-.briefing-hologram {
-  position: relative;
-  width: 100%;
-  max-width: 780px;
-  max-height: 85vh;
-  overflow-y: auto;
-  background:
-    radial-gradient(ellipse 80% 60% at 50% 30%, rgba(0, 180, 255, 0.08) 0%, transparent 70%),
-    linear-gradient(180deg, rgba(0, 30, 64, 0.92) 0%, rgba(0, 16, 44, 0.96) 100%);
-  border: 1px solid rgba(0, 180, 255, 0.35);
-  border-radius: 16px;
-  padding: 2.5rem 2rem;
-  box-shadow:
-    0 0 60px rgba(0, 180, 255, 0.15),
-    0 0 120px rgba(0, 140, 255, 0.08),
-    inset 0 0 40px rgba(0, 180, 255, 0.05),
-    inset 0 1px 0 rgba(0, 200, 255, 0.2);
-}
-
-.briefing-hologram::-webkit-scrollbar { width: 6px; }
-.briefing-hologram::-webkit-scrollbar-track {
-  background: rgba(0, 40, 80, 0.3);
-  border-radius: 3px;
-}
-.briefing-hologram::-webkit-scrollbar-thumb {
-  background: rgba(0, 180, 255, 0.3);
-  border-radius: 3px;
-}
-.briefing-hologram::-webkit-scrollbar-thumb:hover { background: rgba(0, 180, 255, 0.5); }
-
-.briefing-scanlines {
-  position: absolute;
-  inset: 0;
-  border-radius: 16px;
-  pointer-events: none;
-  z-index: 1;
-  background:
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0, 180, 255, 0.03) 2px,
-      rgba(0, 180, 255, 0.03) 4px
-    );
-  animation: scanline-scroll 8s linear infinite;
-}
-
-@keyframes scanline-scroll {
-  from { background-position: 0 0; }
-  to   { background-position: 0 200px; }
-}
-
-.briefing-content { position: relative; z-index: 2; }
-
-.briefing-header-lines {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(0, 180, 255, 0.2);
-}
-
-.briefing-line {
-  font-family: 'Exo 2', monospace;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: rgba(0, 200, 255, 0.7);
-  letter-spacing: 0.12em;
-  text-shadow: 0 0 8px rgba(0, 200, 255, 0.5);
-  animation: holo-flicker 3s ease-in-out infinite;
-}
-
-.briefing-line:nth-child(1) { animation-delay: 0s; }
-.briefing-line:nth-child(2) { animation-delay: 0.3s; }
-.briefing-line:nth-child(3) { animation-delay: 0.6s; }
-.briefing-line:nth-child(4) { animation-delay: 0.9s; }
-
-@keyframes holo-flicker {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.7; }
-  92%      { opacity: 1; }
-  94%      { opacity: 0.4; }
-  96%      { opacity: 1; }
-}
-
-.briefing-title {
-  font-family: 'Exo 2', sans-serif !important;
-  font-size: 1.8rem;
-  font-weight: 900;
-  color: #4de8ff;
-  text-align: center;
-  letter-spacing: 0.25em;
-  text-shadow:
-    0 0 15px rgba(77, 232, 255, 0.8),
-    0 0 40px rgba(77, 232, 255, 0.4),
-    0 0 80px rgba(77, 232, 255, 0.15);
-  margin-bottom: 1.5rem;
-  animation: title-pulse 2.5s ease-in-out infinite;
-}
-
-@keyframes title-pulse {
-  0%, 100% {
-    text-shadow:
-      0 0 15px rgba(77, 232, 255, 0.8),
-      0 0 40px rgba(77, 232, 255, 0.4),
-      0 0 80px rgba(77, 232, 255, 0.15);
-  }
-  50% {
-    text-shadow:
-      0 0 20px rgba(77, 232, 255, 1),
-      0 0 60px rgba(77, 232, 255, 0.6),
-      0 0 120px rgba(77, 232, 255, 0.25);
-  }
-}
-
-.briefing-text {
-  font-size: 0.95rem;
-  line-height: 1.7;
-  color: rgba(180, 230, 255, 0.9);
-  margin-bottom: 1rem;
-  text-shadow: 0 0 6px rgba(0, 180, 255, 0.2);
-}
-
-.briefing-text strong {
-  color: #4de8ff;
-  font-weight: 700;
-  text-shadow: 0 0 10px rgba(77, 232, 255, 0.4);
-}
-
-.briefing-closing {
-  font-weight: 700;
-  font-size: 1rem;
-  color: #4de8ff;
-  text-shadow: 0 0 12px rgba(77, 232, 255, 0.5);
-  margin-top: 0.5rem;
-}
-
-.briefing-rules {
-  margin: 1.5rem 0;
-  padding: 1.25rem;
-  background: rgba(0, 40, 80, 0.4);
-  border: 1px solid rgba(0, 180, 255, 0.15);
-  border-radius: 12px;
-  box-shadow: inset 0 0 20px rgba(0, 80, 140, 0.1);
-}
-
-.briefing-rules-title {
-  font-family: 'Exo 2', sans-serif !important;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #4de8ff;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  margin-bottom: 1rem;
-  text-shadow: 0 0 10px rgba(77, 232, 255, 0.5);
-}
-
-.briefing-rule {
-  display: flex;
-  gap: 0.85rem;
-  margin-bottom: 0.85rem;
-  align-items: flex-start;
-}
-
-.briefing-rule:last-child { margin-bottom: 0; }
-
-.briefing-rule-num {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: rgba(0, 180, 255, 0.15);
-  border: 1px solid rgba(0, 180, 255, 0.4);
-  font-family: 'Exo 2', sans-serif;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #4de8ff;
-  text-shadow: 0 0 6px rgba(77, 232, 255, 0.5);
-  box-shadow: 0 0 10px rgba(0, 180, 255, 0.15);
-}
-
-.briefing-rule div {
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: rgba(180, 230, 255, 0.85);
-}
-
-.briefing-rule strong {
-  color: rgba(120, 220, 255, 0.95);
-  font-weight: 700;
-}
-
-.briefing-footer {
-  text-align: center;
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(0, 180, 255, 0.2);
-}
-
-.briefing-footer .briefing-line {
-  font-size: 0.82rem;
-  color: rgba(0, 200, 255, 0.6);
-}
-
-.briefing-waiting {
-  text-align: center;
-  margin-top: 1.25rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: rgba(0, 200, 255, 0.6);
-  animation: fade-pulse 2.2s ease-in-out infinite;
-  letter-spacing: 0.06em;
-}
-
-/* ── Projector-specific briefing overrides ────────────────────── */
-.briefing-projector {
-  min-height: 100%;
-  padding: 1.5rem 2rem;
-}
-
-.briefing-projector .briefing-hologram {
-  max-width: 1100px;
-  max-height: 92vh;
-  padding: 2.5rem 3rem;
-}
-
-.briefing-projector .briefing-line { font-size: 0.9rem; }
-.briefing-projector .briefing-title { font-size: 2.8rem; margin-bottom: 2rem; }
-.briefing-projector .briefing-text { font-size: 1.15rem; }
-.briefing-projector .briefing-rules-title { font-size: 1.05rem; }
-.briefing-projector .briefing-rule div { font-size: 1.05rem; }
-.briefing-projector .briefing-rule-num { width: 36px; height: 36px; font-size: 0.9rem; }
-.briefing-projector .briefing-closing { font-size: 1.25rem; }
-.briefing-projector .briefing-waiting { font-size: 1.2rem; }
-
-/* ── Mobile overrides for briefing ────────────────────────────── */
-@media (max-width: 600px) {
-  .briefing-overlay { padding: 1rem; }
-  .briefing-hologram { padding: 1.5rem 1.25rem; }
-  .briefing-title { font-size: 1.3rem; letter-spacing: 0.15em; }
-  .briefing-text { font-size: 0.85rem; }
-  .briefing-line { font-size: 0.62rem; }
-  .briefing-rule div { font-size: 0.82rem; }
-  .briefing-rules { padding: 1rem; }
-}
-
-/* ============================================================
    ANOMALY MODAL (host confirmation modals + projector overlay)
    ============================================================ */
 .anomaly-modal-overlay {
@@ -560,7 +289,22 @@ h1, h2, h3 { font-family: 'Exo 2', system-ui, sans-serif; }
   line-height: 1.5;
 }
 /* Projector-specifikus méretezés */
+/* Egymondatos valós fizikai magyarázat az anomália alatt (ingyen tananyag) */
+.anomaly-modal-note {
+  margin-top: 0.9rem;
+  padding: 0.6rem 0.85rem;
+  border-left: 3px solid rgba(0, 212, 255, 0.55);
+  background: rgba(0, 212, 255, 0.07);
+  border-radius: 0 8px 8px 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: rgba(220, 240, 255, 0.85);
+  font-style: italic;
+  text-align: left;
+}
+
 .anomaly-modal--projector { max-width: 640px; }
+.anomaly-modal--projector .anomaly-modal-note { font-size: 1.05rem; }
 .anomaly-modal--projector .anomaly-modal-emoji   { font-size: 5rem; }
 .anomaly-modal--projector .anomaly-modal-header  { font-size: 1rem; }
 .anomaly-modal--projector .anomaly-modal-title   { font-size: 2.2rem; }

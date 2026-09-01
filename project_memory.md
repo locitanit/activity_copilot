@@ -66,8 +66,10 @@ mutate state locally — all writes go through `updateGameData(code, { 'path/to/
 (one atomic multi-path RTDB update). The `logic/` modules are **host-authoritative**
 (they use `Math.random`), so only the host should call them.
 
-**Routing** (`app.js`, by `game.status`): `lobby` → lobby · `briefing`/`playing` →
-host-game or player-game (by `state.isHost`) · `finished` → winner. The projector path
+**Routing** (`app.js`, by `game.status`): `lobby` → lobby · `playing` →
+host-game or player-game (by `state.isHost`) · `finished` → winner.
+(The `briefing` status was removed in 2026-09 — the lobby's launch button goes
+straight to `playing`; the teacher gives the intro out loud.) The projector path
 is taken at load when `?role=projector&room=CODE` is present.
 
 **Session / reconnect:** `app.js` saves `{gameCode, playerId, playerName, isHost}` to
@@ -83,7 +85,7 @@ The whole UI was rebuilt to a **holographic HUD** look. Two style sources coexis
 - **Tailwind** (utilities + the MD3 color tokens from the inline config in `index.html`)
   drives all the redesigned view markup.
 - **`css/style.css`** (~560 lines, pruned) keeps ONLY: `:root` theme vars, reset,
-  splash, toast, the `.view` system, the **briefing hologram** (`.briefing-*`),
+  splash, toast, the `.view` system,
   the **boost chips** (`.boost-chip*`, host arsenal) + **`.boost-info`** (player arsenal
   description tooltip — shows on hover/`:focus`/`.tip-open`; tap toggles on phones, set in
   player-game.js), the host **projector dropdown** (`.proj-menu*`),
@@ -94,7 +96,7 @@ The whole UI was rebuilt to a **holographic HUD** look. Two style sources coexis
   `.clip-chamfer` and the projector board classes live in the `<style>` block in `index.html`.
 
 **Palette / fonts / motifs:** near-black surfaces, neon cyan (`#00d4ff`) accents, Exo 2,
-animated starfield, holographic briefing screen, snake/constellation board.
+animated starfield, snake/constellation board.
 
 **Team colors** (index = teamIndex, 6 max): `#ef4444 #3b82f6 #22c55e #f59e0b #a855f7 #ec4899`.
 
@@ -106,7 +108,7 @@ local `PHASE_HEX` map per view; `timer.js` returns `colorClass` (`phase-0..3`).
 The dark theme must NOT depend on `backdrop-filter` or the WebGL canvas:
 - `#bg-stars` (the fixed full-viewport starfield container) has a **solid dark background
   `#020510`** so the backdrop is dark even if the WebGL canvas fails / doesn't cover.
-- `.holographic-panel` / `.glass-panel` / `.briefing-hologram` **do not use
+- `.holographic-panel` / `.glass-panel` **do not use
   `backdrop-filter`** — it mis-samples the WebGL canvas layer on some GPUs and renders
   panels grey/white (it showed up as a "white dashboard" after a re-render). Panels are
   opaque-enough translucent dark instead.
@@ -121,7 +123,7 @@ JSDoc says 6 — it's wrong). All shared state lives under one game object:
 
 ```js
 {
-  status,         // 'lobby' → 'briefing' → 'playing' → 'finished'
+  status,         // 'lobby' → 'playing' → 'finished'
   createdAt,      // serverTimestamp()
   settings: { teamCount, assignmentType:'random'|'manual', teamNames[],
               boardLength, anomalyEvery, selectedTopics[], allowedTaskTypes[] },
@@ -158,9 +160,9 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
 | Join | `join.js` | — | `#join-code`, `#join-name`, `#btn-join-confirm`, `#btn-join-back` |
 | Host setup | `host-setup.js` | — | `#team-count`, `name=assignmentType`, `.team-name-field`, `#board-length`/`#board-length-val`, `#topics-group`/`name=topic`, `#task-types-group`/`name=taskType`, `#btn-setup-back`, `#btn-create-lobby` |
 | Lobby | `lobby.js` | host / player | `#btn-start-game`, `.team-join-btn[data-team]`, `#btn-leave-game` |
-| Host game | `host-game.js` | briefing / playing | `#btn-launch-game`, `#btn-reveal-word`, `#btn-next-player` (switch active astronaut, pre-reveal), `#btn-reroll`, `#hg-timer`/`#hg-label`/`#hg-ring`, `#btn-start-timer`/`#btn-pause-timer`/`#btn-reset-timer`, `.score-btn[data-team]`, `#btn-no-score`, `.shared-score-check`/`#btn-award-shared`, `#host-details-toggle`/`#host-details-section`, `.proj-menu*`, `.boost-chip*`, `#btn-leave-game` |
-| Projector | `projector.js` | lobby/briefing/playing/finished | `#proj-board-area` (empty mount — see §7 board engine), `#proj-timer`/`#proj-label`/`#proj-timer-panel`, `.stellar-node`/`.constellation-line`, `.proj-ship`/`.proj-ship-craft`/`.proj-planet`/`.proj-station`/`.proj-mine`, `.proj-fx*` |
-| Player game | `player-game.js` | briefing / playing | `#pg-timer`/`#pg-label`/`#pg-ring`, `#pg-details-toggle`/`#pg-details-section`, `.boost-activate-row`, `.boost-info` (boost tooltip), `.torpedo-target-sel`/`.torpedo-fire-btn`, `.trap-cell-input`/`.trap-place-btn`, `.warp-btn`, `.timewarp-btn` (all `[data-bidx]`), `#btn-leave-game` |
+| Host game | `host-game.js` | playing | `#btn-launch-game`, `#btn-reveal-word`, `#btn-next-player` (switch active astronaut, pre-reveal), `#btn-reroll`, `#hg-timer`/`#hg-label`/`#hg-ring`, `#btn-start-timer`/`#btn-pause-timer`/`#btn-reset-timer`, `.score-btn[data-team]`, `#btn-no-score`, `.shared-score-check`/`#btn-award-shared`, `#host-details-toggle`/`#host-details-section`, `.proj-menu*`, `.boost-chip*`, `#btn-leave-game` |
+| Projector | `projector.js` | lobby/playing/finished | `#proj-board-area` (empty mount — see §7 board engine), `#proj-timer`/`#proj-label`/`#proj-timer-panel`, `.stellar-node`/`.constellation-line`, `.proj-ship`/`.proj-ship-craft`/`.proj-planet`/`.proj-station`/`.proj-mine`, `.proj-fx*` |
+| Player game | `player-game.js` | playing | `#pg-timer`/`#pg-label`/`#pg-ring`, `#pg-details-toggle`/`#pg-details-section`, `.boost-activate-row`, `.boost-info` (boost tooltip), `.torpedo-target-sel`/`.torpedo-fire-btn`, `.trap-cell-input`/`.trap-place-btn`, `.warp-btn`, `.timewarp-btn` (all `[data-bidx]`), `#btn-leave-game` |
 | Winner | `winner.js` | — | `#btn-new-game-winner` |
 
 **Collapsible panels** (host & player details) toggle inline `style.display`, NOT the
@@ -207,8 +209,27 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
     never upside-down). A *resting* ship faces its serpentine row's travel direction — `_restHeading(cell)`
     returns 0 (right) or 180 (left, mirrored) from the sign of the node x-deltas — so a ship that moved
     left along a row keeps facing left when it stops.
-  - **Special FX choreography**: supernova blast is placed *behind* each pushed ship (`_behindCellXY`,
-    using `anomalyEvent.affected[].from`) so the wave shoves it forward; **wormhole = teleport**
+  - **Anomaly FX (reworked 2026-09, `_spawnAnomalyFx`)**: **every one of the 9 anomalies has its own,
+    recognisable board animation — no two look alike**, and the `default` branch `console.warn`s
+    instead of silently faking a supernova. Rule: **FX first, ship movement second** — the affected
+    teams are added to `deferredTargets` in `_diffAndAnimate`, and `_moveHold[i]` blocks intermediate
+    Firebase snapshots from yanking the ship forward under the effect; each FX helper calls
+    `_deferMove(i, cell, delay)` at the right beat (supernova 250–600ms by distance, meteor 700,
+    tractor beam 350, slingshot 300; black hole / salvage / comms / open freq move nothing).
+    Helpers: `_fxSupernovaBlast` (explosion + `_fxShockwave` sized to the ±2-cell radius + `_fxHit`),
+    `_fxPullIn` (rAF suck-in/spin/shrink toward an offset `_fxBlackhole`, then `_fxStun`; registered in
+    `_shipAnim` so the popup waits for it), `_fxSalvage` (`_fxEmoji('📦')` + `_fxBoostPulse` + `_fxBounce`),
+    `_fxSlingshot` (`_fxWarp` + `_fxSpeedTrail`), `_fxTractorBeam` (`_fxBeam` light shaft),
+    `_fxMeteorRain` (3 simultaneous `fx-meteor` emoji + explosion), `_fxComms('scramble'|'open')`
+    (green vs red noise overlay), `_fxOpenFreqRings` (a ring around every ship, 80ms apart).
+    Generic new primitives: `_fxEmoji`, `_fxShockwave`, `_fxBeam`, `_fxSpeedTrail`, `_cellStep`,
+    `_offsetFromCell`, `_deferMove`. **No new image assets** — emoji + existing sprites + new CSS
+    keyframes in `index.html` (`fx-beam`, `fx-meteor`, `fx-emoji-pop`, `fx-trail`, `fx-label-flash`,
+    `.proj-ship--frozen`, `.proj-fx-comms.is-scramble`). A fleet stuck in a black hole keeps
+    `.proj-ship--frozen` (grey/violet) until its skipped turn passes. Open frequency's overlay+rings
+    run on the `commDisruptionActive` rising edge (not in `_spawnAnomalyFx`) so they never double up.
+    Every helper early-returns to the end state under `_reduced`.
+  - **Special FX choreography**: **wormhole = teleport**
     (`_fxWormholeTeleport`: ship shrinks at the entry cell, a wormhole sprite shows on entry AND exit,
     ship grows at the exit — no path glide); **torpedo hit defers the target's recoil until after the
     explosion** — for this to work the score change and the `fx` log entry must arrive in ONE snapshot,
@@ -239,11 +260,32 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
   "before" state from the passed-in `game` snapshot — chained calls on a stale `game` can
   clobber each other (that's why anomaly.js writes targeted paths, not the whole teams array).
 - **Anomalies** (`anomaly.js`) on every **Nth** cell (`settings.anomalyEvery`, host-set at
-  setup, default 5): supernova, wormhole, black hole, comms. `isAnomalyCell(cell, boardLength, every)`
-  is the single source of truth — used by scoring.js and projector.js (so the marker and the
-  trigger always agree). Number labels also mark anomaly cells regardless of N.
-  Host-side `Math.random`, host-only DOM modals. Comms only sets `commDisruptionActive`;
-  the actual behavior is enforced where that flag is read.
+  setup, default 5). Reworked 2026-09 to **9 weighted events** (weights sum to 100) where the
+  NAME implies the EFFECT and the default target is the team that landed on it:
+
+  | id | name | w | effect |
+  |----|------|---|--------|
+  | `wormhole` | Féreglyuk 🌀 | 14 | lander: 50% +3 / 50% −2 (two-step modal) |
+  | `supernova` | Szupernóva 💥 | 11 | shockwave: every fleet within ±2 cells −2 |
+  | `blackhole` | Fekete lyuk ⚫ | 9 | time dilation: lander gets `skipNextTurn` (+`skipReason:'blackhole'`) |
+  | `salvage` | Roncsmező 📦 | 14 | lander finds a random boost (written via `updates`, not `addBoostToTeam`) |
+  | `slingshot` | Hintamanőver 🌠 | 12 | last place(s) +2 |
+  | `tractorbeam` | Vontatósugár 🧲 | 9 | last place(s) close half the gap to the leader |
+  | `meteor` | Meteorraj ☄️ | 8 | leader(s) −2 |
+  | `comms` | Komm. zavar 📡 | 9 | next turn's `taskType` forced to `mutogatás` (`forceNextTaskType`) |
+  | `openfreq` | Nyílt frekvencia 🔓 | 14 | next turn starts in phase 3 (`commDisruptionActive`) |
+
+  `isAnomalyCell(cell, boardLength, every)` is the single source of truth — used by scoring.js
+  and projector.js (so the marker and the trigger always agree). Number labels also mark
+  anomaly cells regardless of N. Host-side `Math.random`, host-only DOM modals.
+  Weighted draw via `_ANOMALY_POOL`; `game.lastAnomalyId` blocks an immediate repeat
+  (NOT cleared by `startNextTurn` — it is a cross-turn memory).
+  Every event carries a `physicsNote` (one-sentence real-physics explanation, shown in the
+  host modal and the projector overlay) and a `targeting` tag.
+  `anomalyEvent` payload now always includes `focusCell`, `affected` (`[{teamIndex,from,to}]`)
+  and `boostId` — the projector needs them to animate.
+  `openfreq` only sets `commDisruptionActive` (data field name kept); `comms` sets
+  `forceNextTaskType`, consumed and cleared by `startNextTurn`.
 - **Security:** no auth. Firebase config (incl. apiKey) is committed; README tells operators
   to set RTDB rules to fully open read/write. Fine for a trusted classroom, not for public.
   There's a hidden admin gesture on the landing page (click `#admin-station`, type the
@@ -293,6 +335,12 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
 - **Richer event log**: every turn start, outcome + per-team movement, boost gain/use+effect,
   and anomaly+effect are logged (word-free, since the projector shows it). `appendBoostLog`
   re-reads before append to avoid clobbering; `addBoostLog` takes an optional `fx` 4th arg.
+- **Anomaly rework + briefing removal (2026-09)**: 9 weighted anomalies where the name implies the
+  effect (see §"Anomalies"), each with its own projector animation; the `briefing` status and every
+  `.briefing-*` style were deleted (lobby → `playing` directly), and `joinGame` now auto-assigns a
+  late joiner to the smallest fleet with `turnCount` = that fleet's max (so they queue at the back).
+  Also fixed: `scoring.js` was calling `getCurrentPhase` without `commDisruptionActive`, so a team
+  could still earn a boost during an open-frequency turn.
 - **Configurable anomaly density** (`settings.anomalyEvery`, host-set slider, default 5);
   `isAnomalyCell(cell, boardLength, every)` is the single source of truth (scoring + projector).
 - **Host control** `#btn-next-player` (hand the pre-reveal turn to another teammate).

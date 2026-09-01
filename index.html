@@ -288,6 +288,31 @@
     @keyframes fx-comms { 0% { opacity: 0; } 12% { opacity: 1; } 80% { opacity: 0.7; } 100% { opacity: 0; } }
     .proj-timewarp-pulse { box-shadow: 0 0 30px 4px rgba(199,156,255,0.6) !important; transition: box-shadow 0.3s ease; }
 
+    /* ── ÚJ anomália-FX (A6): vontatósugár, meteor, emoji-sprite, csóva ── */
+    @keyframes fx-beam      { 0% { opacity: 0; transform: scaleX(0); } 25% { opacity: 1; } 100% { opacity: 0; transform: scaleX(1); } }
+    @keyframes fx-meteor    { 0% { transform: translate(-60px,-160px) rotate(35deg) scale(0.5); opacity: 0; }
+                              20% { opacity: 1; } 100% { transform: translate(0,0) rotate(35deg) scale(1); opacity: 1; } }
+    @keyframes fx-emoji-pop { 0% { transform: translateY(-40px) scale(0.4); opacity: 0; } 45% { opacity: 1; }
+                              70% { transform: translateY(0) scale(1.15); } 100% { transform: translateY(0) scale(1); opacity: 0; } }
+    @keyframes fx-trail     { 0% { opacity: 0.55; } 100% { opacity: 0; } }
+    @keyframes fx-label-flash { 0%,100% { opacity: 1; } 25%,75% { opacity: 0.15; } 50% { opacity: 1; } }
+
+    .fx-beam   { transform-origin: left center; border-radius: 999px;
+                 background: linear-gradient(90deg, rgba(0,212,255,0), currentColor, rgba(0,212,255,0));
+                 box-shadow: 0 0 18px currentColor; animation: fx-beam 1.1s ease-out forwards; }
+    .fx-meteor { animation: fx-meteor 0.75s cubic-bezier(0.4,0,0.9,0.5) forwards;
+                 filter: drop-shadow(-14px -14px 12px #ff9a3c); }
+    .fx-emoji  { display: flex; align-items: center; justify-content: center; line-height: 1;
+                 animation: fx-emoji-pop 1.4s cubic-bezier(0.3,1.3,0.6,1) forwards; }
+    .fx-trail  { animation: fx-trail 0.6s linear forwards; }
+
+    /* Tartós állapot: a fekete lyukban ragadt flotta a kimaradó köréig */
+    .proj-ship--frozen .proj-ship-img { filter: grayscale(0.8) brightness(0.75) drop-shadow(0 0 10px #7a3cff); }
+
+    /* Komm.-zavar overlay színvariáns (zöldes szétesés) vs. nyílt frekvencia (piros) */
+    .proj-fx-comms.is-scramble { filter: hue-rotate(115deg) saturate(1.6); }
+    .proj-label-flash { animation: fx-label-flash 1.1s ease-in-out 2; }
+
     @media (prefers-reduced-motion: reduce) {
       .proj-fx { animation-duration: 0.4s !important; }
       .proj-ship-craft.proj-ship--thrusting::after { display: none; }

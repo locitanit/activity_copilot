@@ -41,6 +41,8 @@ let _live = false;             // a baseline beállt-e (csatlakozás-játék-kö
 let _assetsKicked = false;     // képek előtöltése egyszer
 let _lastGame = null;          // legutóbbi game snapshot (az anomália-felugró halasztásához)
 let _finishState = null;       // null | 'running' | 'done' – a győzelmi mozi életciklusa
+let _pendingScrambleFlash = false;  // 📡 komm.zavar: a következő feladattípus-címke villanjon
+let _moveHold = [];            // csapatonként: eddig az időpontig NEM mozdulhat magától (FX-védelem)
 const _reduced = (() => {
   try {
     const mm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -66,7 +68,6 @@ export function renderProjector(game) {
   // (a rAF-loopok megszűnnek, nem ketyegnek leválasztott DOM-on – ez kezeli
   // a játék-vége animáció közben esetet is).
   if (game.status === 'lobby')    { _resetStage(); _renderLobby(el, game);    return; }
-  if (game.status === 'briefing') { _resetStage(); _renderBriefing(el, game);  return; }
   if (game.status === 'finished') { _handleFinished(el, game); return; }
 
   _renderPlaying(el, game);
@@ -100,76 +101,6 @@ function _renderLobby(el, game) {
           </div>`).join('')}
       </div>
       <div class="mt-12 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider animate-pulse">Várakozás a küldetés kezdetére...</div>
-    </div>
-  `;
-}
-
-// ── Briefing nézet (kivetítő) – a meglévő hologram képernyő ────
-function _renderBriefing(el, game) {
-  el.innerHTML = `
-    <div class="briefing-overlay briefing-projector">
-      <div class="briefing-hologram">
-        <div class="briefing-scanlines"></div>
-        <div class="briefing-content">
-          <div class="briefing-header-lines">
-            <span class="briefing-line">&gt;&gt;&gt; BIZTONSÁGI PROTOKOLL: AKTÍV</span>
-            <span class="briefing-line">&gt;&gt;&gt; HITELESÍTÉS: KÓDOLT CSATORNA</span>
-            <span class="briefing-line">&gt;&gt;&gt; FELADÓ: HOUSTON IRÁNYÍTÓKÖZPONT</span>
-            <span class="briefing-line">&gt;&gt;&gt; CÍMZETTEK: RMG ŰRFLOTTÁK – DIGITÁLIS KULTÚRA DIVÍZIÓ</span>
-          </div>
-
-          <h2 class="briefing-title">KADÉTOK! FIGYELEM!</h2>
-
-          <p class="briefing-text">
-            A 23. század legfontosabb tudásbázisa, a <strong>Radnóti Központi Archívum</strong> kritikus találatot kapott. A teljes Digitális Kultúra adatbázis megsemmisült, a fogalmak és kódok erősen titkosított adatcsomagok formájában szóródtak szét a mélyűrben. Ha ezek az adatok elvesznek, a galaxis technológiai sötétségbe borul.
-          </p>
-          <p class="briefing-text">
-            Az Irányítóközpont titeket választott a mentőakcióra. A küldetés a következő: <strong>szeljétek át a galaxist, és érjétek el elsőként a biztonságos Proxima bázist!</strong> A hajtóművetek azonban csak akkor kap energiát, ha útközben sikeresen elfogjátok és dekódoljátok a sérült adatcsomagokat.
-          </p>
-
-          <div class="briefing-rules">
-            <h3 class="briefing-rules-title">A KÜLDETÉS SZABÁLYAI:</h3>
-            <div class="briefing-rule">
-              <span class="briefing-rule-num">1</span>
-              <div>
-                <strong>DEKÓDOLÁS:</strong> A magas háttérsugárzás miatt a kommunikációs modulok tönkrementek. Az adatcsomagokat befogó asztronauta nem mondhatja ki a fogalmat! Csak alternatív módszerekkel (rajz, mutogatás, kódolt körülírás) adhatja át az információt a legénységének.
-              </div>
-            </div>
-            <div class="briefing-rule">
-              <span class="briefing-rule-num">2</span>
-              <div>
-                <strong>TÚLTÖLTÉS FÁZIS (0-30 mp):</strong> A rendszerek maximális fordulatszámon pörögnek. Csak a saját flottád hallja az adást. Ha ebben a kritikus időablakban sikerül a dekódolás, Houston azonnali taktikai fejlesztést küld a hajónak!
-              </div>
-            </div>
-            <div class="briefing-rule">
-              <span class="briefing-rule-num">3</span>
-              <div>
-                <strong>NORMÁL ÜZEMMÓD (30-60 mp):</strong> Az energiaellátás stabilizálódik. A pajzsok még tartanak, így továbbra is csak a saját legénységed fejtheti meg a kódot, de a sikeres dekódolásért extra fejlesztés már nem jár.
-              </div>
-            </div>
-            <div class="briefing-rule">
-              <span class="briefing-rule-num">4</span>
-              <div>
-                <strong>NYÍLT FREKVENCIA (60-90 mp):</strong> A titkosítás összeomlik! Bármelyik rivális flotta lehallgathatja az adást, és ellophatja az energiát a saját hajtóművéhez.
-              </div>
-            </div>
-          </div>
-
-          <p class="briefing-text">
-            Az űr nem biztonságos. A sikeres akciókért cserébe Houston fejlesztéseket küld, de vigyázzatok: a térség tele van instabil féreglyukakkal és anomáliákkal, amik pillanatok alatt átrendezhetik az erőviszonyokat.
-          </p>
-
-          <p class="briefing-text briefing-closing">
-            A rendszerek élesítve. Sok szerencsét, Kadétok. A Radnóti Miklós Galaxis jövője a ti kezetekben van.
-          </p>
-
-          <div class="briefing-footer">
-            <span class="briefing-line">&gt;&gt;&gt; ÜZENET VÉGE &lt;&lt;&lt;</span>
-          </div>
-
-          <p class="briefing-waiting">Várakozás az Irányítóközpont parancsára...</p>
-        </div>
-      </div>
     </div>
   `;
 }
@@ -557,7 +488,7 @@ function _renderPlaying(el, game) {
                 <div class="font-code-sm text-code-sm text-primary/60 uppercase mb-1">Feladat típusa</div>
                 ${currentTurn.taskType && currentTurn.wordRevealed
                   ? `<div class="flex justify-between items-center">
-                       <div class="font-headline-lg-mobile text-headline-lg-mobile" style="color:${activeColor}">${_esc(currentTurn.taskType)}</div>
+                       <div id="proj-tasktype" class="font-headline-lg-mobile text-headline-lg-mobile" style="color:${activeColor}">${_esc(currentTurn.taskType)}</div>
                        <div class="px-2 py-1 bg-primary/10 rounded text-primary text-sm font-bold border border-primary/30">${currentTurn.points ?? '–'} FÉNYÉV</div>
                      </div>
                      <!-- A titkos szó SOSEM jelenik meg -->
@@ -610,6 +541,16 @@ function _renderPlaying(el, game) {
       _baseline(game, boardLength);          // csatlakozás játék közben: snap, nincs visszajátszás
     } else {
       _diffAndAnimate(game, boardLength);    // mozgás (score-diff) + FX (boostLog/anomalyEvent)
+    }
+    // ⚫ Fekete lyuk: a kimaradó köréig szürke/kábult marad a flotta
+    for (let i = 0; i < _shipEls.length; i++) {
+      const w = _shipEls[i]; if (!w) continue;
+      w.classList.toggle('proj-ship--frozen', !!(teams[i] && teams[i].skipNextTurn));
+    }
+    // 📡 Komm. zavar: a kényszerített feladattípus címkéje kétszer felvillan
+    if (_pendingScrambleFlash && currentTurn.taskType && currentTurn.wordRevealed) {
+      _pendingScrambleFlash = false;
+      _fxLabelFlash();
     }
     if (typeof ResizeObserver !== 'undefined') {
       _boardResizeObs = new ResizeObserver(() => {
@@ -706,7 +647,7 @@ function _resetStage() {
   _layout = null; _lastStaticSig = null;
   _shipEls = []; _shipCraft = []; _shipAnim = []; _shipPos = []; _targetCell = []; _shipOffset = [];
   _fxCursor = 0; _anomalyCursor = 0; _commPrev = false; _live = false; _assetsKicked = false; _lastGame = null;
-  _finishState = null;
+  _finishState = null; _pendingScrambleFlash = false; _moveHold = [];
 }
 
 function _ensureStage(game, boardLength, teamCount) {
@@ -889,13 +830,19 @@ function _diffAndAnimate(game, boardLength) {
       deferredTargets.add(e.fx.target);
     }
   }
+  // Ugyanez az anomáliáknál: ELŐBB az effekt, UTÁNA mozdul a hajó (A6.6).
+  // A mozgást az adott FX-függvény indítja el a saját animációja megfelelő pillanatában.
+  if (newAnomaly && newAnomaly.type !== 'wormhole' && Array.isArray(newAnomaly.affected)) {
+    newAnomaly.affected.forEach(a => { if (a && a.teamIndex != null) deferredTargets.add(a.teamIndex); });
+  }
 
   // 1) Mozgás: minden csapatra, ha a cél-mező változott
   for (let i = 0; i < _shipEls.length; i++) {
     if (i === wormholeTeam) continue;                   // külön kezeljük (teleport)
     const cell = _clampCell(teams[i] ? teams[i].score : 0, boardLength);
     if (cell === _targetCell[i]) continue;
-    if (deferredTargets.has(i)) continue;               // torpedó: az explózió indítja
+    if (deferredTargets.has(i)) continue;               // torpedó / anomália: az FX indítja
+    if ((_moveHold[i] || 0) > _now()) continue;         // futó FX várakoztatja a mozgást
     _tweenShip(i, cell);
   }
   _applyStacking();
@@ -917,9 +864,10 @@ function _diffAndAnimate(game, boardLength) {
     _anomalyCursor = newAnomaly.timestamp;
   }
 
-  // 4) Kommunikációs zavar felfutó éle
+  // 4) 🔓 Nyílt frekvencia felfutó éle: piros zaj + gyűrű MINDEN hajó körül
+  //    (a commDisruptionActive adatmező neve maradt, csak az esemény neve változott)
   const comm = !!(game.currentTurn && game.currentTurn.commDisruptionActive);
-  if (comm && !_commPrev) _fxComms();
+  if (comm && !_commPrev) { _fxComms('open'); _fxOpenFreqRings(game.teams); }
   _commPrev = comm;
 }
 
@@ -1120,6 +1068,7 @@ function _buildAnomalyModalEl(game) {
         <div class="anomaly-modal-team" style="color:${_esc(pColor)}">${pTeamName} flotta anomáliára lépett</div>
         <div class="anomaly-modal-general">${_esc(p.generalDescription)}</div>
         <div class="anomaly-modal-body">${_esc(p.specificDescription)}</div>
+        ${p.physicsNote ? `<div class="anomaly-modal-note">🔭 ${_esc(p.physicsNote)}</div>` : ''}
       </div>`;
   return overlay;
 }
@@ -1182,15 +1131,233 @@ function _fxTimewarp(x, y) {
   const panel = document.getElementById('proj-timer-panel');
   if (panel) { panel.classList.add('proj-timewarp-pulse'); setTimeout(() => panel.classList.remove('proj-timewarp-pulse'), 1650); }
 }
-function _fxComms() {
+// variant: 'open' = piros (nyílt frekvencia) | 'scramble' = zöldes (komm. zavar)
+function _fxComms(variant) {
   if (!_fxLayer) return;
   const d = document.createElement('div');
-  d.className = 'proj-fx proj-fx-comms';
+  d.className = 'proj-fx proj-fx-comms' + (variant === 'scramble' ? ' is-scramble' : '');
   _fxLayer.appendChild(d);
   const done = () => { if (d.parentNode) d.parentNode.removeChild(d); };
   d.addEventListener('animationend', done, { once: true });
   setTimeout(done, 2450);
 }
+// ════════════════════════════════════════════════════════════════
+//  Anomália-FX készlet (A6) – minden anomáliának SAJÁT animációja van
+// ════════════════════════════════════════════════════════════════
+
+// Két szomszédos mező távolsága pixelben (a hatósugarak méretezéséhez).
+function _cellStep() {
+  if (!_layout || _layout.N < 2) return 40;
+  const a = _cellXY(0), b = _cellXY(1);
+  return Math.max(12, Math.hypot(b.x - a.x, b.y - a.y));
+}
+
+// Egy pont a `cell` ELŐTT (a magasabb mező felé); frac = mezőtávolság aránya.
+function _offsetFromCell(cell, frac) {
+  const c = _cellXY(cell);
+  if (!_layout) return c;
+  let dx = 0, dy = 0;
+  if (cell < _layout.N - 1)  { const n = _cellXY(cell + 1); dx = n.x - c.x; dy = n.y - c.y; }
+  else if (cell > 0)         { const v = _cellXY(cell - 1); dx = c.x - v.x; dy = c.y - v.y; }
+  return { x: c.x + dx * frac, y: c.y + dy * frac };
+}
+
+// Emoji-alapú FX (nem kell hozzá képfájl).
+function _fxEmoji(x, y, emoji, size, animClass, ttl) {
+  if (!_fxLayer) return null;
+  const d = document.createElement('div');
+  d.className = 'proj-fx ' + (animClass || 'fx-emoji');
+  d.style.left   = (x - size / 2).toFixed(1) + 'px';
+  d.style.top    = (y - size / 2).toFixed(1) + 'px';
+  d.style.width  = size.toFixed(1) + 'px';
+  d.style.height = size.toFixed(1) + 'px';
+  d.style.display = 'flex'; d.style.alignItems = 'center'; d.style.justifyContent = 'center';
+  d.style.lineHeight = '1';
+  d.style.fontSize = (size * 0.82).toFixed(1) + 'px';
+  d.textContent = emoji;
+  _fxLayer.appendChild(d);
+  const done = () => { if (d.parentNode) d.parentNode.removeChild(d); };
+  d.addEventListener('animationend', done, { once: true });
+  setTimeout(done, ttl || 1600);
+  return d;
+}
+
+// Kifelé táguló lökéshullám-gyűrű adott VÉGSŐ sugárral.
+// (a fx-shockwave keyframe 1.7×-re nagyít, ezért a kezdőméretet visszaosztjuk)
+function _fxShockwave(x, y, radiusPx) {
+  const size = Math.max(40, (radiusPx * 2) / 1.7);
+  return _fxRing(x, y, size, '#ffd9a0', 'fx-shockwave', 1450);
+}
+
+// Fénynyaláb két pont között (vontatósugár). Külső div = pozíció/szög,
+// belső div = a scaleX animáció (különben felülírnák egymás transformját).
+function _fxBeam(from, to, color, ttl) {
+  if (!_fxLayer) return;
+  const dx = to.x - from.x, dy = to.y - from.y;
+  const len = Math.max(8, Math.hypot(dx, dy));
+  const h   = Math.max(6, (_layout ? _layout.baseNode : 24) * 0.35);
+  const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+  const wrap = document.createElement('div');
+  wrap.className = 'proj-fx';
+  wrap.style.left = '0'; wrap.style.top = '0';
+  wrap.style.width  = len.toFixed(1) + 'px';
+  wrap.style.height = h.toFixed(1) + 'px';
+  wrap.style.transformOrigin = 'left center';
+  wrap.style.transform =
+    `translate(${from.x.toFixed(1)}px, ${(from.y - h / 2).toFixed(1)}px) rotate(${ang.toFixed(1)}deg)`;
+  const inner = document.createElement('div');
+  inner.className = 'fx-beam';
+  inner.style.cssText = 'position:absolute;inset:0;';
+  inner.style.color = color || '#5fe0ff';
+  wrap.appendChild(inner);
+  _fxLayer.appendChild(wrap);
+  const done = () => { if (wrap.parentNode) wrap.parentNode.removeChild(wrap); };
+  inner.addEventListener('animationend', done, { once: true });
+  setTimeout(done, ttl || 1300);
+}
+
+// Halványuló hajó-másolatok az útvonal mentén (a hintamanőver csóvája).
+function _fxSpeedTrail(i, fromCell, toCell) {
+  if (_reduced || !_fxLayer || !_layout) return;
+  const size = Math.max(18, _layout.shipW * 0.75);
+  const N = 4;
+  for (let k = 0; k < N; k++) {
+    const c = fromCell + Math.round((toCell - fromCell) * (k / N));
+    const q = _cellXY(_clampCell(c, _layout.N - 1));
+    const d = _fxRing(q.x, q.y, size, TEAM_COLORS[i] || '#fff', 'fx-trail', 800);
+    if (!d) continue;
+    d.style.borderRadius = '50%';
+    d.style.border = '2px solid currentColor';
+    d.style.boxShadow = '0 0 12px currentColor';
+    d.style.animationDelay = (k * 70) + 'ms';
+  }
+}
+
+// Az FX UTÁN induló hajómozgás (A6.6: előbb az effekt, utána a mozgás).
+function _deferMove(i, toCell, delay) {
+  if (i == null || toCell == null) return;
+  if (_reduced || !delay) { _moveHold[i] = 0; _tweenShip(i, toCell); return; }
+  // Zár: a köztes Firebase-pillanatképek se ránthassák előre a hajót az FX alá.
+  _moveHold[i] = _now() + delay + 60;
+  setTimeout(() => { _moveHold[i] = 0; _tweenShip(i, toCell); }, delay);
+}
+
+// 💥 Szupernóva – robbanás a mezőn + ±2 mezős lökéshullám, majd hátravetődés
+function _fxSupernovaBlast(p, cell, affected, bl) {
+  const step = _cellStep();
+  _fxSupernova(p.x, p.y);
+  _fxShockwave(p.x, p.y, step * 2.2);
+  affected.forEach(a => {
+    const i = a.teamIndex; if (i == null) return;
+    const dist  = Math.min(2, Math.abs((a.from != null ? a.from : cell) - cell));
+    const delay = 250 + dist * 175;             // 250 / 425 / 600 ms
+    if (_reduced) _fxHit(i); else setTimeout(() => _fxHit(i), delay);
+    _deferMove(i, _clampCell(a.to, bl), delay);
+  });
+}
+
+// ⚫ Fekete lyuk – a hajót beszívja, pörgeti, zsugorítja, majd visszapattan
+function _fxPullIn(i, target) {
+  if (i == null || !_shipEls[i] || !_layout) return;
+  if (_reduced) { _fxStun(i); return; }
+  if (_shipAnim[i]) { _shipAnim[i].cancel(); _shipAnim[i] = null; }
+  const base  = _shipPos[i] || _cellXY(_targetCell[i] || 0);
+  const craft = _shipCraft[i];
+  const w     = _shipEls[i];
+  const sw = _layout.shipW, sh = _layout.shipH;
+  const dur = 900, start = _now();
+  const step = (now) => {
+    const handle = _shipAnim[i];
+    if (!handle) return;
+    const t = Math.min(1, (now - start) / dur);
+    const s = Math.sin(t * Math.PI);                       // 0 → 1 → 0 (oda-vissza)
+    const x = base.x + (target.x - base.x) * s * 0.8;
+    const y = base.y + (target.y - base.y) * s * 0.8;
+    w.style.transform = `translate(${(x - sw / 2).toFixed(1)}px, ${(y - sh / 2).toFixed(1)}px)`;
+    if (craft) craft.style.transform = `rotate(${(s * 540).toFixed(1)}deg) scale(${(1 - s * 0.55).toFixed(3)})`;
+    _shipPos[i] = { x, y };
+    if (t < 1) { handle.raf = requestAnimationFrame(step); }
+    else { _shipAnim[i] = null; _placeShip(i); _fxStun(i); _syncAnomalyModal(); }
+  };
+  _shipAnim[i] = {
+    raf: requestAnimationFrame(step),
+    cancel() { cancelAnimationFrame(this.raf); if (craft) craft.classList.remove('proj-ship--thrusting'); },
+  };
+}
+
+// 📦 Roncsmező – leereszkedő konténer, majd boost-gyűrű + pattanás
+function _fxSalvage(p, ti) {
+  const size = Math.max(30, (_layout ? _layout.baseNode : 24) * 1.15);
+  _fxEmoji(p.x, p.y, '📦', size, 'fx-emoji', 1500);
+  const pickup = () => {
+    if (ti == null) return;
+    const q = _shipXY(ti);
+    _fxBoostPulse(q.x, q.y, TEAM_COLORS[ti]);
+    _fxBounce(ti);
+  };
+  if (_reduced) pickup(); else setTimeout(pickup, 450);
+}
+
+// 🌠 Hintamanőver – gyorsulás-gyűrű + csóva, majd kilövés előre
+function _fxSlingshot(affected, bl) {
+  affected.forEach(a => {
+    const i = a.teamIndex; if (i == null) return;
+    const q = _shipXY(i);
+    _fxWarp(q.x, q.y, TEAM_COLORS[i]);
+    _fxSpeedTrail(i, _clampCell(a.from, bl), _clampCell(a.to, bl));
+    _deferMove(i, _clampCell(a.to, bl), 300);
+  });
+}
+
+// 🧲 Vontatósugár – fénynyaláb a lemaradótól az élen állóig, aztán csúszás
+function _fxTractorBeam(affected, game, bl) {
+  const teams = game.teams || [];
+  let leadCell = 0;
+  teams.forEach(t => { const c = _clampCell(t.score, bl); if (c > leadCell) leadCell = c; });
+  const lead = _cellXY(leadCell);
+  affected.forEach(a => {
+    const i = a.teamIndex; if (i == null) return;
+    const from = _cellXY(_clampCell(a.from, bl));
+    _fxBeam(from, lead, '#5fe0ff', 1300);
+    _deferMove(i, _clampCell(a.to, bl), 350);
+  });
+}
+
+// ☄️ Meteorraj – 2-3 meteor EGYSZERRE zuhan be, becsapódás, majd hátralépés
+function _fxMeteorRain(affected, bl) {
+  affected.forEach(a => {
+    const i = a.teamIndex; if (i == null) return;
+    const p    = _cellXY(_clampCell(a.from, bl));
+    const size = Math.max(24, (_layout ? _layout.baseNode : 24) * 0.95);
+    for (let k = 0; k < 3; k++) {
+      _fxEmoji(p.x + (k - 1) * size * 0.85, p.y + (k % 2) * size * 0.35,
+        '☄️', size, 'fx-meteor', 900);
+    }
+    const impact = () => { _fxExplosion(p.x, p.y); _fxHit(i); };
+    if (_reduced) impact(); else setTimeout(impact, 700);
+    _deferMove(i, _clampCell(a.to, bl), 700);
+  });
+}
+
+// 🔓 Nyílt frekvencia – gyűrű MINDEN hajó körül, lépcsőzetesen
+function _fxOpenFreqRings(teams) {
+  (teams || []).forEach((t, i) => {
+    if (!_shipEls[i]) return;
+    const ring = () => { const q = _shipXY(i); _fxWarp(q.x, q.y, TEAM_COLORS[i]); };
+    if (_reduced) ring(); else setTimeout(ring, i * 80);
+  });
+}
+
+// 📡 Komm. zavar – a kényszerített feladattípus címkéje kétszer felvillan
+function _fxLabelFlash() {
+  const el = document.getElementById('proj-tasktype');
+  if (!el) return;
+  el.classList.remove('proj-label-flash');
+  void el.offsetWidth;                       // reflow → az animáció újraindul
+  el.classList.add('proj-label-flash');
+  setTimeout(() => el.classList.remove('proj-label-flash'), 2400);
+}
+
 function _fxHit(i) {
   const craft = _shipCraft[i]; if (!craft) return;
   craft.classList.add('proj-ship--hit'); setTimeout(() => craft.classList.remove('proj-ship--hit'), 950);
@@ -1271,24 +1438,33 @@ function _spawnFx(fx, game, bl) {
 function _spawnAnomalyFx(ev, game, bl) {
   if (!_layout || !_fxLayer || !ev) return;
   const teams = game.teams || [];
-  const ti = ev.triggeredByTeamIndex;
-  const cell = (ti != null && teams[ti]) ? _clampCell(teams[ti].score, bl) : Math.floor(bl / 2);
-  const p = _cellXY(cell);
-  const affected = Array.isArray(ev.affected) ? ev.affected : null;
+  const ti    = ev.triggeredByTeamIndex;
+  const cell  = (ev.focusCell != null)
+    ? _clampCell(ev.focusCell, bl)
+    : ((ti != null && teams[ti]) ? _clampCell(teams[ti].score, bl) : Math.floor(bl / 2));
+  const p        = _cellXY(cell);
+  const affected = Array.isArray(ev.affected) ? ev.affected : [];
+
   switch (ev.type) {
-    case 'supernova': {
-      // A robbanás kicsit a (leghátsó) érintett hajó MÖGÖTT – a lökéshullám előrelöki.
-      if (affected && affected.length) {
-        affected.forEach(a => { const b = _behindCellXY(_clampCell(a.from, bl)); _fxSupernova(b.x, b.y); });
-      } else {
-        const b = _behindCellXY(cell); _fxSupernova(b.x, b.y);
-      }
+    case 'supernova':   _fxSupernovaBlast(p, cell, affected, bl);           break;
+    case 'blackhole': {
+      const hole = _offsetFromCell(cell, 0.85);
+      _fxBlackhole(hole.x, hole.y);
+      _fxPullIn(ti, hole);
       break;
     }
-    case 'blackhole': _fxBlackhole(p.x, p.y); break;
-    case 'comms':     break;  // a comms FX-et a commDisruptionActive felfutó éle indítja (nincs dupla)
-    // 'wormhole' a _fxWormholeTeleport-ban (teleport), ide nem jut el
-    default:          _fxSupernova(p.x, p.y);
+    case 'salvage':     _fxSalvage(p, ti);                                  break;
+    case 'slingshot':   _fxSlingshot(affected, bl);                         break;
+    case 'tractorbeam': _fxTractorBeam(affected, game, bl);                 break;
+    case 'meteor':      _fxMeteorRain(affected, bl);                        break;
+    case 'comms':       _fxComms('scramble'); _pendingScrambleFlash = true; break;
+    // 🔓 openfreq: a piros overlay + a gyűrűk a commDisruptionActive felfutó
+    //    élén futnak (lásd _diffAndAnimate 4. pont) – itt nem, hogy ne legyen dupla.
+    case 'openfreq':                                                        break;
+    // 🌀 wormhole: a _fxWormholeTeleport intézi, ide nem jut el
+    default:
+      console.warn('[projector] Nincs animáció ehhez az anomáliához:', ev.type);
+      _fxSupernova(p.x, p.y);   // vészkerék, hogy azért történjen valami
   }
 }
 

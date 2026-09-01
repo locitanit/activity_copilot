@@ -9,6 +9,15 @@ import { topics }          from '../data/topics.js';
 import { updateGameData }  from '../firebase-config.js';
 import { addBoostLog }     from './boosts.js';
 
+// Pontérték-tartomány feladattípusonként. Modulszinten, mert a kényszerített
+// feladattípusnál (📡 kommunikációs zavar) is ebből kell pontot húzni.
+const POINTS_BY_TYPE = { 'körülírás': [2, 3], 'mutogatás': [4, 5, 6], 'rajzolás': [4, 5, 6] };
+
+function _rollPoints(taskType) {
+  const pool = POINTS_BY_TYPE[taskType] ?? [3, 4, 5];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 // ── Segédfüggvény: szólista összeállítása ──────────────────────
 function _buildWordPool(settings, excludeWords = []) {
   const selectedTopics  = settings.selectedTopics  || [];
@@ -41,9 +50,7 @@ export function generateTurnData(settings, excludeWords = []) {
 
   const word     = pool[Math.floor(Math.random() * pool.length)];
   const taskType = allowedTaskTypes[Math.floor(Math.random() * allowedTaskTypes.length)];
-  const POINTS_BY_TYPE = { 'körülírás': [2, 3], 'mutogatás': [4, 5, 6], 'rajzolás': [4, 5, 6] };
-  const pointPool = POINTS_BY_TYPE[taskType] ?? [3, 4, 5];
-  const points    = pointPool[Math.floor(Math.random() * pointPool.length)];
+  const points   = _rollPoints(taskType);
 
   return { word, taskType, points };
 }
@@ -101,12 +108,15 @@ export async function startNextTurn(gameCode, game) {
     if (team && team.skipNextTurn) {
       // Ezt a csapatot átlépjük
       skipUpdates[`teams/${nextTeamIndex}/skipNextTurn`] = false;
+      skipUpdates[`teams/${nextTeamIndex}/skipReason`]   = null;
       skippedAny = true;
 
-      // Naplózzuk
+      // Naplózzuk (a kimaradás oka: gravitációs csapda vagy fekete lyuk)
       try {
-        await addBoostLog(gameCode, game,
-          `🕳️ ${team.name} kimarad a köréből a gravitációs csapda miatt!`);
+        const msg = team.skipReason === 'blackhole'
+          ? `⚫ ${team.name} kimarad a köréből – az eseményhorizont időcsapdájában ragadt!`
+          : `🕳️ ${team.name} kimarad a köréből a gravitációs csapda miatt!`;
+        await addBoostLog(gameCode, game, msg);
       } catch (_) { /* silent */ }
 
       nextTeamIndex = (nextTeamIndex + 1) % teamCount;
@@ -129,6 +139,16 @@ export async function startNextTurn(gameCode, game) {
 
   if (!turnBase) {
     throw new Error('Nincs elérhető feladvány! Töltsd fel a topics.js fájlt.');
+  }
+
+  // 📡 Kommunikációs zavar anomália: a következő kör feladattípusa kényszerített.
+  // A pontot az ÚJ típushoz igazítjuk (különben pl. körülírás-pont járna mutogatásért).
+  if (game.forceNextTaskType) {
+    turnBase = {
+      ...turnBase,
+      taskType: game.forceNextTaskType,
+      points:   _rollPoints(game.forceNextTaskType),
+    };
   }
 
   const activePlayerId = selectNextPlayer(players, nextTeamIndex);
@@ -162,6 +182,7 @@ export async function startNextTurn(gameCode, game) {
     currentTurn:          newCurrentTurn,
     upcomingTurns:        upcoming,
     commDisruptionActive: false,
+    forceNextTaskType:    null,     // elfogyasztottuk
     anomalyPending:       null,
     anomalyEvent:         null,
   });
@@ -172,9 +193,10 @@ export async function startNextTurn(gameCode, game) {
     const playerName = activePlayerId && players[activePlayerId]
       ? players[activePlayerId].name : '';
     const who = playerName ? ` · ${playerName} asztronauta` : '';
-    const comms = newCurrentTurn.commDisruptionActive ? ' · 📡 Nyílt frekvencia' : '';
+    const comms     = newCurrentTurn.commDisruptionActive ? ' · 🔓 Nyílt frekvencia' : '';
+    const scrambled = game.forceNextTaskType ? ' · 📡 kommunikációs zavar' : '';
     await addBoostLog(gameCode, game,
-      `🛰️ ${startedTeamName} köre${who} · ${newCurrentTurn.taskType} (${newCurrentTurn.points} fényév a tét)${comms}`);
+      `🛰️ ${startedTeamName} köre${who} · ${newCurrentTurn.taskType} (${newCurrentTurn.points} fényév a tét)${comms}${scrambled}`);
   } catch (_) { /* silent */ }
 }
 

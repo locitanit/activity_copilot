@@ -109,12 +109,47 @@ export async function joinGame(code, playerName) {
   );
   if (nameTaken) throw new Error('Ez a név már foglalt ebben a játékban!');
 
+  // ── Beosztás ────────────────────────────────────────────────
+  // Lobbyban: -1 marad (a lobby indításakor oszt a _handleStartGame).
+  // MÁR FUTÓ játékban (nincs briefing-türelmi ablak): azonnal a legkisebb
+  // létszámú flottába soroljuk, különben a késve érkező soha nem kapna kört.
+  let teamIndex = -1;
+  let turnCount = 0;
+
+  if (game.status !== 'lobby') {
+    const teamCount = Array.isArray(game.teams) ? game.teams.length : 0;
+    if (teamCount > 0) {
+      const counts = Array(teamCount).fill(0);
+      existingPlayers.forEach(p => {
+        if (p.teamIndex >= 0 && p.teamIndex < teamCount) counts[p.teamIndex]++;
+      });
+      teamIndex = counts.indexOf(Math.min(...counts));   // holtverseny → kisebb index
+
+      // A sor VÉGÉRE kerül: a flotta jelenlegi maximumát kapja, nem 0-t
+      // (különben a selectNextPlayer azonnal őt választaná mindenki elé).
+      turnCount = Math.max(0, ...existingPlayers
+        .filter(p => p.teamIndex === teamIndex)
+        .map(p => p.turnCount || 0));
+    }
+  }
+
   const newRef = push(ref(db, `games/${code}/players`));
   await set(newRef, {
     name:      trimmedName,
-    teamIndex: -1,   // -1 = még nem osztottak csapatba
-    turnCount: 0,
+    teamIndex,
+    turnCount,
   });
+
+  // Napló: a tanár lássa a kivetítőn, ki csatlakozott menet közben
+  if (teamIndex >= 0 && game.status !== 'lobby') {
+    try {
+      const teamName = game.teams?.[teamIndex]?.name ?? `${teamIndex + 1}. flotta`;
+      await appendBoostLog(code, {
+        message:   `👤 ${trimmedName} asztronauta csatlakozott a ${teamName} flottához`,
+        timestamp: Date.now(),
+      });
+    } catch (_) { /* silent */ }
+  }
 
   return { playerId: newRef.key, gameCode: code };
 }

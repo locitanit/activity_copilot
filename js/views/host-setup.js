@@ -91,7 +91,9 @@ export function renderHostSetup() {
                   class="font-display-md text-display-md text-primary-fixed-dim min-w-[3ch] text-right">5</span>
           </div>
           <span class="font-code-sm text-code-sm text-on-surface-variant">
-            Minden <span id="anomaly-every-inline">5</span>. mező űranomália (szupernóva, féreglyuk, fekete lyuk, kommunikációs zavar).
+            Minden <span id="anomaly-every-inline">5</span>. mező űranomália
+            (féreglyuk, szupernóva, fekete lyuk, roncsmező, hintamanőver, vontatósugár,
+            meteorraj, kommunikációs zavar, nyílt frekvencia).
           </span>
         </div>
       </div>

@@ -163,10 +163,6 @@ export function startGameListener(code) {
           showView('view-lobby');
           renderLobby(game, state);
           break;
-        case 'briefing':
-          showView('view-host-game');
-          renderHostGame(game, state);
-          break;
         case 'playing':
           showView('view-host-game');
           renderHostGame(game, state);
@@ -185,10 +181,6 @@ export function startGameListener(code) {
         case 'lobby':
           showView('view-lobby');
           renderLobby(game, state);
-          break;
-        case 'briefing':
-          showView('view-player-game');
-          renderPlayerGame(game, state);
           break;
         case 'playing':
           showView('view-player-game');

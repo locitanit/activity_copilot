@@ -48,14 +48,21 @@ Csapatban kell szavakat/fogalmakat kitaláltatni a többiekkel. Az a csapat nyer
 - **Fejlesztések (boostok)**: torpedó, gravitációs csapda, hiperhajtómű, időtágulás, pajzs.
   A boostok rövid leírása a vezérlőpulton és a játékos telefonján is megjelenik (egérrávitel
   vagy koppintás).
-- **Űranomáliák**: minden N. mezőn (a sűrűség a beállításoknál állítható, alapért. 5) – szupernóva, féreglyuk, fekete lyuk, kommunikációs zavar.
+- **Űranomáliák**: minden N. mezőn (a sűrűség a beállításoknál állítható, alapért. 5) – 9 esemény
+  súlyozott sorsolással, ahol a névből következik a hatás: féreglyuk 🌀, szupernóva 💥 (lökéshullám),
+  fekete lyuk ⚫ (kimaradó kör), roncsmező 📦 (fejlesztést találsz), gravitációs hintamanőver 🌠,
+  vontatósugár 🧲, meteorraj ☄️ (az élen állót fékezi), kommunikációs zavar 📡 (kényszerített
+  mutogatás), nyílt frekvencia 🔓 (a következő kör rabolható). Mindegyikhez tartozik egy
+  egymondatos fizikai magyarázat is.
 
 ### Animált kivetítő-tábla
 A kivetítő egy élő **csillagtérkép**: a flották **színes űrhajóként** repülnek a bolygók
 (START = Föld, CÉL = űrállomás) között, mező-mezőre, a haladási irányba fordulva. Minden
 fontos esemény saját **animációt** kap – mozgás, fejlesztés-szerzés és -használat (torpedó +
-robbanás, csapda, pajzs, hiperhajtómű, időtágulás), valamint az anomáliák (szupernóva-lökés,
-féreglyuk-teleport, fekete lyuk). A jobb oldali **Eseménynapló** az egész játékmenetet
+robbanás, csapda, pajzs, hiperhajtómű, időtágulás), valamint **mind a 9 anomália saját,
+felismerhető animációval** (féreglyuk-teleport, szupernóva-lökéshullám, fekete lyuk beszívás,
+konténer-találat, gyorsulás-csóva, vontatósugár-nyaláb, meteorbecsapódás, zöld/piros
+zaj-overlay). A jobb oldali **Eseménynapló** az egész játékmenetet
 rögzíti (ki van soron, sikerült-e, minden mozgás és hatás), így a meccs visszakövethető.
 
 ### Csatlakozás és kilépés
@@ -116,7 +123,7 @@ https://<felhasználónév>.github.io/<repo-neve>/
 | **HTML5** | Single-page alkalmazás – egyetlen `index.html`, 8 nézet-konténerrel |
 | **Tailwind CSS (Play CDN)** | A nézetek dizájnja; Material-Design-3 színpaletta (inline `tailwind.config`) |
 | **Material Symbols + Exo 2** | Ikonok és megjelenítő betűtípus (Google Fonts) |
-| **CSS3 (`css/style.css` + `index.html`)** | Amit a Tailwind nem fed le: téma-változók, splash, toast, briefing hologram, anomália-ablak, boost-chipek és -leírás buborékok; a csillagtérkép-tábla, az űrhajók és az animációs FX stílusai az `index.html` `<style>` blokkjában |
+| **CSS3 (`css/style.css` + `index.html`)** | Amit a Tailwind nem fed le: téma-változók, splash, toast, anomália-ablak, boost-chipek és -leírás buborékok; a csillagtérkép-tábla, az űrhajók és az animációs FX stílusai az `index.html` `<style>` blokkjában |
 | **WebGL** | Globális, animált csillagmező háttér (`index.html`) |
 | **Vanilla JavaScript (ES6 modules)** | Teljes frontend logika, nézetek, állapotkezelés – keretrendszer nélkül |
 | **Firebase Realtime Database (SDK 10.12.2)** | Valós idejű adatszinkronizáció (CDN-ről, `import`-tal) |
@@ -130,7 +137,7 @@ activity/
 ├── index.html                  # SPA – Tailwind + config + dizájn-CSS + csillagmező + 8 nézet-div
 ├── project_memory.md           # Fejlesztői referencia (architektúra, adatmodell, gotchák)
 ├── css/
-│   └── style.css               # Amit a Tailwind nem fed le (téma-vars, splash, toast, briefing, anomália, boost-chip)
+│   └── style.css               # Amit a Tailwind nem fed le (téma-vars, splash, toast, anomália, boost-chip)
 ├── docs/
 │   └── UI-SPEC.md              # Nézetenkénti felületterv (designer brief)
 ├── img/                        # Logók, bolygók, hajók, ikonok
@@ -144,7 +151,7 @@ activity/
     │   ├── timer.js            # Fázisszámítás, szünet-támogatás (timerElapsedMs), időformázás
     │   ├── scoring.js          # Pontozás, lopott/osztott pont, győzelem, következő kör
     │   ├── boosts.js           # Fejlesztések (torpedó, csapda, hiperhajtómű, időtágulás, pajzs)
-    │   └── anomaly.js          # Űranomáliák (szupernóva, féreglyuk, fekete lyuk, kommunikációs zavar)
+    │   └── anomaly.js          # Űranomáliák (9 esemény, súlyozott sorsolás)
     └── views/
         ├── landing.js          # Főmenü
         ├── join.js             # Csatlakozás kóddal (dedikált oldal)

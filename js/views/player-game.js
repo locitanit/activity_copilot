@@ -1,7 +1,7 @@
 /**
  * views/player-game.js – View 4/C: Játékos nézet játék közben
  * Holografikus, csapatszínre hangolt dizájn (Tailwind + Material Symbols).
- * A "playing" állapot a player-device mockup alapján; a briefing hologramot tart.
+ * A "playing" állapot a player-device mockup alapján.
  */
 
 import { getElapsedMs, getPhaseInfo, getTotalSeconds, formatTime } from '../logic/timer.js';
@@ -37,78 +37,6 @@ export function renderPlayerGame(game, appState) {
     el.style.background = '';
     el.innerHTML = `<div class="min-h-screen flex items-center justify-center">
       <p class="text-on-surface-variant">Várakozás a játékra...</p></div>`;
-    return;
-  }
-
-  // ── BRIEFING PHASE: holographic mission message ──────────────
-  if (game.status === 'briefing') {
-    el.style.background = '';
-    el.innerHTML = `
-      <div class="briefing-overlay">
-        <div class="briefing-hologram">
-          <div class="briefing-scanlines"></div>
-          <div class="briefing-content">
-            <div class="briefing-header-lines">
-              <span class="briefing-line">&gt;&gt;&gt; BIZTONSÁGI PROTOKOLL: AKTÍV</span>
-              <span class="briefing-line">&gt;&gt;&gt; HITELESÍTÉS: KÓDOLT CSATORNA</span>
-              <span class="briefing-line">&gt;&gt;&gt; FELADÓ: HOUSTON IRÁNYÍTÓKÖZPONT</span>
-              <span class="briefing-line">&gt;&gt;&gt; CÍMZETTEK: RMG ŰRFLOTTÁK – DIGITÁLIS KULTÚRA DIVÍZIÓ</span>
-            </div>
-
-            <h2 class="briefing-title">KADÉTOK! FIGYELEM!</h2>
-
-            <p class="briefing-text">
-              A 23. század legfontosabb tudásbázisa, a <strong>Radnóti Központi Archívum</strong> kritikus találatot kapott. A teljes Digitális Kultúra adatbázis megsemmisült, a fogalmak és kódok erősen titkosított adatcsomagok formájában szóródtak szét a mélyűrben. Ha ezek az adatok elvesznek, a galaxis technológiai sötétségbe borul.
-            </p>
-            <p class="briefing-text">
-              Az Irányítóközpont titeket választott a mentőakcióra. A küldetés a következő: <strong>szeljétek át a galaxist, és érjétek el elsőként a biztonságos Proxima bázist!</strong> A hajtóművetek azonban csak akkor kap energiát, ha útközben sikeresen elfogjátok és dekódoljátok a sérült adatcsomagokat.
-            </p>
-
-            <div class="briefing-rules">
-              <h3 class="briefing-rules-title">A KÜLDETÉS SZABÁLYAI:</h3>
-              <div class="briefing-rule">
-                <span class="briefing-rule-num">1</span>
-                <div>
-                  <strong>DEKÓDOLÁS:</strong> A magas háttérsugárzás miatt a kommunikációs modulok tönkrementek. Az adatcsomagokat befogó asztronauta nem mondhatja ki a fogalmat! Csak alternatív módszerekkel (rajz, mutogatás, kódolt körülírás) adhatja át az információt a legénységének.
-                </div>
-              </div>
-              <div class="briefing-rule">
-                <span class="briefing-rule-num">2</span>
-                <div>
-                  <strong>TÚLTÖLTÉS FÁZIS (0-30 mp):</strong> A rendszerek maximális fordulatszámon pörögnek. Csak a saját flottád hallja az adást. Ha ebben a kritikus időablakban sikerül a dekódolás, Houston azonnali taktikai fejlesztést küld a hajónak!
-                </div>
-              </div>
-              <div class="briefing-rule">
-                <span class="briefing-rule-num">3</span>
-                <div>
-                  <strong>NORMÁL ÜZEMMÓD (30-60 mp):</strong> Az energiaellátás stabilizálódik. A pajzsok még tartanak, így továbbra is csak a saját legénységed fejtheti meg a kódot, de a sikeres dekódolásért extra fejlesztés már nem jár.
-                </div>
-              </div>
-              <div class="briefing-rule">
-                <span class="briefing-rule-num">4</span>
-                <div>
-                  <strong>NYÍLT FREKVENCIA (60-90 mp):</strong> A titkosítás összeomlik! Bármelyik rivális flotta lehallgathatja az adást, és ellophatja az energiát a saját hajtóművéhez.
-                </div>
-              </div>
-            </div>
-
-            <p class="briefing-text">
-              Az űr nem biztonságos. A sikeres akciókért cserébe Houston fejlesztéseket küld, de vigyázzatok: a térség tele van instabil féreglyukakkal és anomáliákkal, amik pillanatok alatt átrendezhetik az erőviszonyokat.
-            </p>
-
-            <p class="briefing-text briefing-closing">
-              A rendszerek élesítve. Sok szerencsét, Kadétok. A Radnóti Miklós Galaxis jövője a ti kezetekben van.
-            </p>
-
-            <div class="briefing-footer">
-              <span class="briefing-line">&gt;&gt;&gt; ÜZENET VÉGE &lt;&lt;&lt;</span>
-            </div>
-
-            <p class="briefing-waiting">Várakozás az Irányítóközpont parancsára...</p>
-          </div>
-        </div>
-      </div>
-    `;
     return;
   }
 

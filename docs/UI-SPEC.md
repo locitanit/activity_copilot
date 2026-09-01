@@ -8,7 +8,7 @@ the **Host Dashboard** (teacher), the **Projector** (public wall display), and t
 
 ## ⚡ Condensed brief (prompt-sized, for a UI designer AI)
 
-> Design the UI for a Hungarian, space-themed multiplayer classroom quiz game ("Activity"-style: explain/draw/mime words). Dark cinematic sci-fi look — near-black background, neon cyan accents, glowing team colors, "Exo 2" font, animated starfields, black holes, a holographic mission-briefing screen, and a snake-shaped board through space toward "Proxima base". Three distinct surfaces:
+> Design the UI for a Hungarian, space-themed multiplayer classroom quiz game ("Activity"-style: explain/draw/mime words). Dark cinematic sci-fi look — near-black background, neon cyan accents, glowing team colors, "Exo 2" font, animated starfields, black holes, and a snake-shaped board through space toward "Proxima base". Three distinct surfaces:
 >
 > 1. **Host Dashboard (desktop, landscape)** — the teacher's command console; the only screen that shows the secret word. Flow: main menu → mission setup (teams, board length, topics, task types) → lobby (join code + live roster) → control panel. The control panel has a secret-word card, reveal/reroll, a phase-colored timer (start/pause/reset), per-team scoring buttons (+ "nobody"/"shared"), team boost inventories, and a collapsible sidebar with standings, upcoming words, and history. Plus a winner screen.
 > 2. **Projector (large shared display, landscape, full black)** — public, read-only, and **must never show the secret word**. Shows team score badges, a big live timer + phase, turn info (active team/player, task type, points — but not the word), an event/boost ticker, and a snake board with team tokens, anomaly cells (🌀) and trap cells (🕳️).
@@ -25,7 +25,7 @@ the **Host Dashboard** (teacher), the **Projector** (public wall display), and t
 - **Team (fleet) colors**, up to 6, always indexed the same way: red `#ef4444`, blue `#3b82f6`, green `#22c55e`, amber `#f59e0b`, purple `#a855f7`, pink `#ec4899`.
 - **Typography:** "Exo 2" (Google Font), bold headings with wide letter-spacing.
 - **Timer is color-coded into 3 phases** (used everywhere a timer appears): 🟢 Phase 1 = 0–30s "encrypted, own team only" · 🟡 Phase 2 = 30–60s "database link" · 🔴 Phase 3 = 60–90s "open frequency — STEALABLE". (Special modifiers: *time-dilation* extends phase 1 to 45s; *comm-disruption* makes the whole turn red/stealable.)
-- **Motifs:** animated starfields, a pulsing black hole, wormholes, planets; a holographic "mission briefing" screen with scanline/flicker effects; a snake-shaped game board (a journey through space to "Proxima base").
+- **Motifs:** animated starfields, a pulsing black hole, wormholes, planets; a snake-shaped game board (a journey through space to "Proxima base").
 - **Glossary** (so the designer reads the screens): *küldetés* = mission/game · *flotta* = fleet/team · *fényév* (light-year) = points · *asztronauta* = player · *Irányítóközpont* = control center (the host) · *adatcsomag* = the secret word / "data packet".
 
 ---
@@ -53,7 +53,7 @@ It moves through several states:
 - **Start mission** button (disabled until ≥1 player, and — in manual mode — everyone is on a team).
 - **Leave/End control** (top-left): ends & deletes the mission.
 
-### 1d. Control panel — Briefing state
+### 1d. Control panel — Briefing state *(eltávolítva 2026-09)*
 - Full **holographic mission-briefing** card (story narrative + the 4 game rules).
 - **Control-center status:** total players + per-team counts.
 - **🚀 Launch first round** button (enabled once everyone's aboard).
@@ -84,7 +84,7 @@ It moves through several states:
 ### 2a. Lobby
 - Branding/logo, **giant join code**, colored badges for each team, "waiting for the mission to start".
 
-### 2b. Briefing
+### 2b. Briefing *(eltávolítva 2026-09)*
 - Static **holographic mission briefing** (same story + rules), with scanline/flicker sci-fi effects.
 
 ### 2c. Playing ← *main HUD*
@@ -113,7 +113,7 @@ It moves through several states:
 - "Waiting for control center" status.
 - **Leave control** (top-left).
 
-### 3c. Briefing
+### 3c. Briefing *(eltávolítva 2026-09)*
 - The holographic mission briefing (same story/rules), "waiting for the control center's command".
 
 ### 3d. Playing ← *role-aware main screen*
@@ -141,4 +141,6 @@ The **entire screen is tinted with your team's color** (vertical gradient). Game
 ## Boost & anomaly icon set (for consistent iconography across surfaces)
 
 - **Boosts:** torpedo 🚀, gravity trap 🕳️, hyperdrive/warp ⚡, time dilation ⏳, shield 🛡️.
-- **Anomalies:** supernova ☄️, wormhole 🌀, black hole, comms disruption 📡.
+- **Anomalies:** 9 weighted events (2026-09) — wormhole 🌀, supernova 💥, black hole ⚫,
+  salvage field 📦, slingshot 🌠, tractor beam 🧲, meteor shower ☄️, comms scramble 📡,
+  open frequency 🔓 — each with its own board animation.
