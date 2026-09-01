@@ -153,7 +153,7 @@ activity/
     │   ├── boosts.js           # Fejlesztések (torpedó, csapda, hiperhajtómű, időtágulás, pajzs)
     │   └── anomaly.js          # Űranomáliák (9 esemény, súlyozott sorsolás)
     └── views/
-        ├── landing.js          # Főmenü
+        ├── landing.js          # Főmenü (+ QR-kód a kezdőoldalra)
         ├── join.js             # Csatlakozás kóddal (dedikált oldal)
         ├── host-setup.js       # Játékbeállítások (flották, témák, tábla hossza, anomália-sűrűség)
         ├── lobby.js            # Váróterem (kód, csapatbeosztás) – Host + Játékos

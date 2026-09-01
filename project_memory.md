@@ -156,7 +156,7 @@ time dilation); comm-disruption makes the whole turn phase-3 (stealable).
 
 | View | File | States | Key element hooks |
 |------|------|--------|-------------------|
-| Landing | `landing.js` | — | `#btn-new-game`, `#btn-join-game`, `#admin-station` (hidden admin gesture) |
+| Landing | `landing.js` | — | `#btn-new-game`, `#btn-join-game`, `#btn-show-qr`/`#qr-panel`/`#qr-box`/`#qr-url` (toggles a QR of `origin+pathname`; the `qrcodejs` lib is lazy-loaded from cdnjs on first click, then cached), `#admin-station` (hidden admin gesture) |
 | Join | `join.js` | — | `#join-code`, `#join-name`, `#btn-join-confirm`, `#btn-join-back` |
 | Host setup | `host-setup.js` | — | `#team-count`, `name=assignmentType`, `.team-name-field`, `#board-length`/`#board-length-val`, `#topics-group`/`name=topic`, `#task-types-group`/`name=taskType`, `#btn-setup-back`, `#btn-create-lobby` |
 | Lobby | `lobby.js` | host / player | `#btn-start-game`, `.team-join-btn[data-team]`, `#btn-leave-game` |

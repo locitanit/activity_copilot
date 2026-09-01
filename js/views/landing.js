@@ -1,11 +1,34 @@
 /**
  * views/landing.js – View 1: Főmenü
- * Gombok: "Új küldetés (Host)" és "Csatlakozás kóddal".
+ * Gombok: "Új küldetés (Host)", "Csatlakozás kóddal" és "QR-kód"
+ * (a kezdőoldalra mutató QR – a diákok beolvassák és máris itt vannak).
  * Holografikus / űr-HUD dizájn (Tailwind + Material Symbols).
  */
 
 import { showView, showToast } from '../app.js';
 import { deleteAllGames } from '../firebase-config.js';
+
+// ── QR-generátor lusta betöltése (csak az első gombnyomásra) ─────
+const QR_LIB_URL = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+let _qrLibPromise = null;
+
+function _loadQrLib() {
+  if (window.QRCode) return Promise.resolve();
+  if (_qrLibPromise)  return _qrLibPromise;
+  _qrLibPromise = new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.src = QR_LIB_URL;
+    sc.onload  = () => resolve();
+    sc.onerror = () => { _qrLibPromise = null; reject(new Error('nincs internet?')); };
+    document.head.appendChild(sc);
+  });
+  return _qrLibPromise;
+}
+
+// A kezdőoldal címe query/hash nélkül (a ?role=projector&room=... ne kerüljön bele).
+function _landingUrl() {
+  return window.location.origin + window.location.pathname;
+}
 
 export function renderLanding() {
   const el = document.getElementById('view-landing');
@@ -43,6 +66,22 @@ export function renderLanding() {
                  flex items-center justify-center gap-2">
           <span class="material-symbols-outlined">login</span> Csatlakozás kóddal
         </button>
+        <button id="btn-show-qr" aria-expanded="false" aria-controls="qr-panel"
+          class="holographic-panel text-primary font-label-md text-label-md uppercase
+                 px-6 py-4 rounded clip-chamfer hover:border-primary/50 transition-all
+                 flex items-center justify-center gap-2">
+          <span class="material-symbols-outlined">qr_code_2</span>
+          <span id="btn-show-qr-label">QR-kód mutatása</span>
+        </button>
+      </div>
+
+      <!-- QR-kód panel: a kezdőoldalra mutat, a diákok beolvassák -->
+      <div id="qr-panel" class="hidden mt-6 flex flex-col items-center gap-3">
+        <div id="qr-box"
+             class="bg-white p-4 rounded-xl shadow-[0_0_35px_rgba(0,212,255,0.35)]
+                    flex items-center justify-center min-w-[120px] min-h-[120px]"></div>
+        <p id="qr-url"
+           class="font-code-sm text-code-sm text-primary/70 break-all text-center max-w-xs"></p>
       </div>
 
       <!-- Rejtett admin (állomásra kattintás) – telefonon elrejtve -->
@@ -65,6 +104,60 @@ export function renderLanding() {
       showView('view-join');
       renderJoin();
     });
+  });
+
+  // ── QR-kód mutatása / elrejtése ─────────────────────────────
+  const qrBtn   = document.getElementById('btn-show-qr');
+  const qrLabel = document.getElementById('btn-show-qr-label');
+  const qrPanel = document.getElementById('qr-panel');
+  const qrBox   = document.getElementById('qr-box');
+  const qrUrlEl = document.getElementById('qr-url');
+  let   qrDrawn = false;
+
+  qrBtn.addEventListener('click', async () => {
+    // Elrejtés
+    if (!qrPanel.classList.contains('hidden')) {
+      qrPanel.classList.add('hidden');
+      qrBtn.setAttribute('aria-expanded', 'false');
+      qrLabel.textContent = 'QR-kód mutatása';
+      return;
+    }
+
+    // Fájlból megnyitva (file://) nincs értelmes cím, amit be lehetne olvasni
+    if (window.location.protocol === 'file:') {
+      showToast('A QR-kód csak webcímről működik (file:// nem jó).');
+      return;
+    }
+
+    if (!qrDrawn) {
+      const url = _landingUrl();
+      qrBtn.disabled = true;
+      try {
+        await _loadQrLib();
+      } catch (_) {
+        qrBtn.disabled = false;
+        showToast('A QR-generátor nem töltődött be – nincs internet?');
+        return;
+      }
+      qrBtn.disabled = false;
+      // A doboz szélessége adja a QR méretét (mobilon kisebb, kivetítőn nagyobb)
+      const size = Math.round(Math.min(280, Math.max(140, window.innerWidth * 0.6)));
+      qrBox.innerHTML = '';
+      new window.QRCode(qrBox, {
+        text:        url,
+        width:       size,
+        height:      size,
+        colorDark:   '#020510',
+        colorLight:  '#ffffff',
+        correctLevel: window.QRCode.CorrectLevel.M,
+      });
+      qrUrlEl.textContent = url;
+      qrDrawn = true;
+    }
+
+    qrPanel.classList.remove('hidden');
+    qrBtn.setAttribute('aria-expanded', 'true');
+    qrLabel.textContent = 'QR-kód elrejtése';
   });
 
   // ── Rejtett admin funkció: állomásra kattintás ─────────────
